@@ -1,0 +1,242 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Clean White Background */
+    --background: 0 0% 100%;
+    --foreground: 222 47% 11%;
+
+    /* Card with subtle shadow */
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+
+    /* Popover */
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+
+    /* Purple Primary - Modern & Premium */
+    --primary: 262 83% 58%;
+    --primary-foreground: 0 0% 100%;
+
+    /* Light Gray Secondary */
+    --secondary: 220 14% 96%;
+    --secondary-foreground: 222 47% 11%;
+
+    /* Muted backgrounds */
+    --muted: 220 14% 96%;
+    --muted-foreground: 215 16% 47%;
+
+    /* Blue Accent */
+    --accent: 217 91% 60%;
+    --accent-foreground: 0 0% 100%;
+
+    /* Destructive (Red) */
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    /* Borders - Very light */
+    --border: 220 13% 91%;
+    --input: 220 13% 91%;
+
+    /* Focus ring - Purple */
+    --ring: 262 83% 58%;
+
+    /* Rounded corners */
+    --radius: 0.75rem;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-white text-foreground;
+  }
+}
+
+/* ===== Aceternity UI Animations ===== */
+
+/* Spotlight */
+@keyframes spotlight {
+  0% {
+    opacity: 0;
+    transform: translate(-72%, -62%) scale(0.5);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translate(-50%, -40%) scale(1);
+  }
+}
+
+/* Meteor animation */
+@keyframes meteor {
+  0% {
+    transform: rotate(215deg) translateX(0);
+    opacity: 1;
+  }
+
+  70% {
+    opacity: 1;
+  }
+
+  100% {
+    transform: rotate(215deg) translateX(-500px);
+    opacity: 0;
+  }
+}
+
+/* Shimmer for moving border */
+@keyframes shimmer {
+  from {
+    background-position: 0 0;
+  }
+
+  to {
+    background-position: -200% 0;
+  }
+}
+
+/* Aurora gradient animation */
+@keyframes aurora {
+
+  0%,
+  100% {
+    background-position: 50% 50%, 50% 50%;
+  }
+
+  25% {
+    background-position: 0% 50%, 100% 50%;
+  }
+
+  50% {
+    background-position: 100% 50%, 0% 50%;
+  }
+
+  75% {
+    background-position: 50% 0%, 50% 100%;
+  }
+}
+
+/* Sparkle animation */
+@keyframes sparkle {
+
+  0%,
+  100% {
+    opacity: 0;
+    transform: scale(0);
+  }
+
+  50% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Glow pulse */
+@keyframes glow-pulse {
+
+  0%,
+  100% {
+    opacity: 0.4;
+  }
+
+  50% {
+    opacity: 0.8;
+  }
+}
+
+/* Float animation */
+@keyframes float {
+
+  0%,
+  100% {
+    transform: translateY(0px);
+  }
+
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+/* Slide up fade */
+@keyframes slide-up-fade {
+  0% {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Background gradient move */
+@keyframes gradient-move {
+
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+/* Utility classes */
+.animate-meteor {
+  animation: meteor 5s linear infinite;
+}
+
+.animate-spotlight {
+  animation: spotlight 2s ease 0.75s 1 forwards;
+}
+
+.animate-shimmer {
+  animation: shimmer 2s linear infinite;
+}
+
+.animate-aurora {
+  animation: aurora 15s ease infinite;
+}
+
+.animate-sparkle {
+  animation: sparkle 2s ease-in-out infinite;
+}
+
+.animate-glow-pulse {
+  animation: glow-pulse 2s ease-in-out infinite;
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+.animate-slide-up {
+  animation: slide-up-fade 0.5s ease-out forwards;
+}
+
+.animate-gradient {
+  animation: gradient-move 5s ease infinite;
+  background-size: 200% 200%;
+}
+
+/* Grid background patterns */
+.bg-grid-white\/10 {
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32' width='32' height='32' fill='none' stroke='rgb(255 255 255 / 0.1)'%3e%3cpath d='M0 .5H31.5V32'/%3e%3c/svg%3e");
+}
+
+.bg-grid-purple\/5 {
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32' width='32' height='32' fill='none' stroke='rgb(147 51 234 / 0.05)'%3e%3cpath d='M0 .5H31.5V32'/%3e%3c/svg%3e");
+}
+
+.bg-dot-purple\/10 {
+  background-image: radial-gradient(rgb(147 51 234 / 0.1) 1px, transparent 1px);
+  background-size: 16px 16px;
+}
