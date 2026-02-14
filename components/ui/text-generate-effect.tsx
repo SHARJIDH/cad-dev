@@ -19,6 +19,16 @@ export const TextGenerateEffect = ({
     const [scope, animate] = useAnimate();
     const wordsArray = words.split(" ");
 
+    // Separate gradient/text classes from layout classes
+    const gradientClasses = (className || "")
+        .split(" ")
+        .filter((c) => c.startsWith("bg-") || c.startsWith("text-transparent") || c.startsWith("bg-clip"))
+        .join(" ");
+    const layoutClasses = (className || "")
+        .split(" ")
+        .filter((c) => !c.startsWith("bg-") && !c.startsWith("text-transparent") && !c.startsWith("bg-clip"))
+        .join(" ");
+
     useEffect(() => {
         animate(
             "span",
@@ -34,13 +44,13 @@ export const TextGenerateEffect = ({
     }, [scope, animate, duration, filter]);
 
     return (
-        <div className={cn("font-bold", className)}>
+        <div className={cn("font-bold", layoutClasses)}>
             <motion.div ref={scope}>
                 {wordsArray.map((word, idx) => {
                     return (
                         <motion.span
                             key={word + idx}
-                            className="opacity-0"
+                            className={cn("opacity-0", gradientClasses)}
                             style={{
                                 filter: filter ? "blur(10px)" : "none",
                             }}
