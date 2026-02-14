@@ -228,4 +228,11 @@ If you encounter issues:
 
 ---
 
-**Remember**: Always monitor your Azure spending and set up alerts to avoid unexpected charges!
+**Remember**: Always monitor your Azure spending and set up alerts to avoid unexpected charges! Iterative refinement — "make the kitchen bigger" instead of regenerating from scratch
+Streaming generation — show pipeline progress instead of a 30s spinner
+Structured output — use JSON mode to eliminate parsing failures (easy win)
+Real file export — GLTF/OBJ download actually works instead of just showing a toast
+2D floor plan view — top-down blueprint toggle
+
+
+

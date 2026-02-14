@@ -1,47 +1,21 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Slider } from "@/components/ui/slider";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
 import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select";
-import { Separator } from "@/components/ui/separator";
-import {
-    ZoomIn,
-    ZoomOut,
-    Loader2,
     Copy,
     Check,
-    Save,
     Code,
     Wand2,
-    Sun,
-    Moon,
-    Sunrise,
-    Sunset,
-    Maximize2,
-    GripVertical,
-    LayoutPanelLeft,
-    LayoutPanelTop,
-    Expand,
     Shrink,
-    Info,
+    FolderPlus,
+    Sparkles,
 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "@/components/ui/use-toast";
 import { CadModelViewer } from "@/components/cad-model-viewer";
 import { InputPanel } from "@/components/input-panel";
 import { useProjects } from "@/lib/store";
-import { FolderPlus, Sparkles } from "lucide-react";
 
 export default function CadGeneratorPage() {
     const { addProject } = useProjects();
@@ -70,9 +44,10 @@ export default function CadGeneratorPage() {
     const [isGenerating, setIsGenerating] = useState(false);
     const [generatedModel, setGeneratedModel] = useState<any>(null);
     const [generatedCode, setGeneratedCode] = useState("");
-    const [activeTab, setActiveTab] = useState("visual");
     const [copied, setCopied] = useState(false);
-    const [viewerSettings, setViewerSettings] = useState({
+
+    // Default viewer settings (no settings panel — just sensible defaults)
+    const viewerSettings = {
         showGrid: true,
         showAxes: true,
         backgroundColor: "#f0f0f0",
@@ -81,54 +56,9 @@ export default function CadGeneratorPage() {
         zoom: 1,
         showMeasurements: false,
         roomLabels: true,
-    });
-    const [processingSteps, setProcessingSteps] = useState<{
-        [key: string]: "pending" | "processing" | "completed" | "error";
-    }>({
-        sketch: "pending",
-        vision: "pending",
-        openai: "pending",
-        model: "pending",
-    });
-
-    // Layout state
-    const [layoutMode, setLayoutMode] = useState<
-        "horizontal" | "vertical" | "input-focus" | "viewer-focus"
-    >("horizontal");
-    const [inputPanelSize, setInputPanelSize] = useState(40); // percentage
-    const [isResizing, setIsResizing] = useState(false);
-    const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
-    const resizeStartRef = useRef<{
-        position: number;
-        startSize: number;
-    } | null>(null);
-    const containerRef = useRef<HTMLDivElement>(null);
+    };
 
     const codeRef = useRef<HTMLPreElement>(null);
-
-    // Effect to handle window resize during dragging
-    useEffect(() => {
-        const handleWindowResize = () => {
-            if (isResizing) {
-                setIsResizing(false);
-                resizeStartRef.current = null;
-            }
-        };
-
-        window.addEventListener("resize", handleWindowResize);
-        return () => window.removeEventListener("resize", handleWindowResize);
-    }, [isResizing]);
-
-    // Function to update processing steps
-    const updateProcessingStep = (
-        step: string,
-        status: "pending" | "processing" | "completed" | "error"
-    ) => {
-        setProcessingSteps((prev) => ({
-            ...prev,
-            [step]: status,
-        }));
-    };
 
     const handleGenerate = async (inputs: {
         prompt?: string;
@@ -136,36 +66,12 @@ export default function CadGeneratorPage() {
         speechData?: string | null;
         photoData?: string | null;
     }) => {
-        // Reset processing steps
-        setProcessingSteps({
-            sketch: "pending",
-            vision: "pending",
-            openai: "pending",
-            model: "pending",
-        });
-
         setIsGenerating(true);
 
         try {
-            // Extract inputs from the InputPanel component
             const { prompt, sketchData, speechData, photoData } = inputs;
-
-            // Update prompt state for consistency with other parts of the app
             setPrompt(prompt || "");
 
-            // Mark sketch processing as complete if not using sketch
-            if (!sketchData) {
-                updateProcessingStep("sketch", "completed");
-            } else {
-                // Mark sketch processing as active then complete
-                updateProcessingStep("sketch", "processing");
-                setTimeout(
-                    () => updateProcessingStep("sketch", "completed"),
-                    500
-                );
-            }
-
-            // Prepare request payload - matches Azure API expectations
             const payload: {
                 prompt: string;
                 sketchData?: string;
@@ -174,17 +80,8 @@ export default function CadGeneratorPage() {
                 prompt: prompt || speechData || "Generate a CAD model based on this input"
             };
 
-            // Add sketch data if available
-            if (sketchData) {
-                payload.sketchData = sketchData;
-            }
-
-            // Add photo data if available
-            if (photoData) {
-                payload.photoData = photoData;
-                // When using photo, mark vision processing as active
-                updateProcessingStep("vision", "processing");
-            }
+            if (sketchData) payload.sketchData = sketchData;
+            if (photoData) payload.photoData = photoData;
 
             console.log("Generating CAD model with Azure services:", {
                 hasPrompt: !!payload.prompt,
@@ -193,35 +90,16 @@ export default function CadGeneratorPage() {
                 hasSpeechData: !!speechData,
             });
 
-            // Mark OpenAI processing as active
-            updateProcessingStep("openai", "processing");
-
-            // Call our API endpoint - connects to Azure services
             const response = await fetch("/api/cad-generator", {
                 method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                },
+                headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(payload),
             });
 
-            // If sketch or photo was provided, mark vision processing as complete
-            if (sketchData || photoData) {
-                updateProcessingStep("vision", "completed");
-            }
-
-            // Mark OpenAI processing as complete
-            updateProcessingStep("openai", "completed");
-
-            // Mark model generation as active
-            updateProcessingStep("model", "processing");
-
             if (!response.ok) {
                 const errorData = await response.json().catch(() => ({}));
-                updateProcessingStep("model", "error");
                 throw new Error(
-                    `Failed to generate model with Azure: ${response.status} ${response.statusText
-                    }${errorData.details ? ` - ${errorData.details}` : ""}`
+                    `Failed to generate model with Azure: ${response.status} ${response.statusText}${errorData.details ? ` - ${errorData.details}` : ""}`
                 );
             }
 
@@ -229,37 +107,15 @@ export default function CadGeneratorPage() {
             console.log("Azure API Response:", data);
 
             if (!data.modelData || !data.code) {
-                console.error("Invalid response format from Azure:", data);
-                updateProcessingStep("model", "error");
                 throw new Error("Invalid response format from Azure API");
             }
 
-            // Ensure the modelData has the expected structure
-            if (
-                !Array.isArray(data.modelData.rooms) ||
-                data.modelData.rooms.length === 0
-            ) {
-                console.error(
-                    "Invalid or empty rooms array from Azure:",
-                    data.modelData
-                );
-                updateProcessingStep("model", "error");
-                throw new Error(
-                    "Invalid model data from Azure: no rooms found"
-                );
+            if (!Array.isArray(data.modelData.rooms) || data.modelData.rooms.length === 0) {
+                throw new Error("Invalid model data from Azure: no rooms found");
             }
-
-            // Mark model generation as complete
-            updateProcessingStep("model", "completed");
 
             setGeneratedModel(data.modelData);
             setGeneratedCode(data.code);
-            setActiveTab("visual");
-
-            // If we're in input-focus mode, switch to viewer-focus after generation
-            if (layoutMode === "input-focus") {
-                setLayoutMode("viewer-focus");
-            }
 
             toast({
                 title: "Model generated successfully",
@@ -268,32 +124,17 @@ export default function CadGeneratorPage() {
         } catch (error) {
             console.error("Error with Azure services:", error);
 
-            // Update any pending steps to error
-            Object.keys(processingSteps).forEach((step) => {
-                if (
-                    processingSteps[step] === "processing" ||
-                    processingSteps[step] === "pending"
-                ) {
-                    updateProcessingStep(step, "error");
-                }
-            });
-
-            // Fallback to mock data if Azure API fails
             const mockResponse = {
-                modelData: generateMockModelData(
-                    prompt || "Floor plan from input"
-                ),
+                modelData: generateMockModelData(prompt || "Floor plan from input"),
                 code: generateMockCode(prompt || "Floor plan from input"),
             };
 
             setGeneratedModel(mockResponse.modelData);
             setGeneratedCode(mockResponse.code);
-            setActiveTab("visual");
 
             toast({
                 title: "Using fallback data",
-                description:
-                    "Could not connect to Azure API. Using sample data instead.",
+                description: "Could not connect to Azure API. Using sample data instead.",
                 variant: "destructive",
             });
         } finally {
@@ -307,139 +148,27 @@ export default function CadGeneratorPage() {
         setTimeout(() => setCopied(false), 2000);
         toast({
             title: "Code copied",
-            description:
-                "The generated code has been copied to your clipboard.",
+            description: "The generated code has been copied to your clipboard.",
         });
-    };
-
-    const handleSaveModel = (format: string) => {
-        // In a real app, this would trigger a download of the model in the specified format
-        toast({
-            title: `Model saved as ${format.toUpperCase()}`,
-            description: `Your model has been exported in ${format.toUpperCase()} format.`,
-        });
-    };
-
-    const handleZoom = (direction: "in" | "out") => {
-        setViewerSettings((prev) => ({
-            ...prev,
-            zoom:
-                direction === "in"
-                    ? Math.min(prev.zoom + 0.2, 3)
-                    : Math.max(prev.zoom - 0.2, 0.5),
-        }));
     };
 
     // Mock function to generate model data based on prompt
     const generateMockModelData = (prompt: string) => {
-        // This would be replaced with actual LLM-generated data
         return {
             rooms: [
-                {
-                    name: "living",
-                    width: 5,
-                    length: 7,
-                    height: 3,
-                    x: 0,
-                    y: 0,
-                    z: 0,
-                    connected_to: ["kitchen", "hallway"],
-                },
-                {
-                    name: "kitchen",
-                    width: 4,
-                    length: 4,
-                    height: 3,
-                    x: 5,
-                    y: 0,
-                    z: 0,
-                    connected_to: ["living", "dining"],
-                },
-                {
-                    name: "dining",
-                    width: 4,
-                    length: 5,
-                    height: 3,
-                    x: 5,
-                    y: 0,
-                    z: 4,
-                    connected_to: ["kitchen"],
-                },
-                {
-                    name: "hallway",
-                    width: 2,
-                    length: 5,
-                    height: 3,
-                    x: 0,
-                    y: 0,
-                    z: 7,
-                    connected_to: [
-                        "living",
-                        "bedroom1",
-                        "bedroom2",
-                        "bathroom",
-                    ],
-                },
-                {
-                    name: "bedroom1",
-                    width: 4,
-                    length: 4,
-                    height: 3,
-                    x: -4,
-                    y: 0,
-                    z: 7,
-                    connected_to: ["hallway"],
-                },
-                {
-                    name: "bedroom2",
-                    width: 4,
-                    length: 4,
-                    height: 3,
-                    x: 2,
-                    y: 0,
-                    z: 7,
-                    connected_to: ["hallway"],
-                },
-                {
-                    name: "bathroom",
-                    width: 3,
-                    length: 2,
-                    height: 3,
-                    x: 0,
-                    y: 0,
-                    z: 12,
-                    connected_to: ["hallway"],
-                },
+                { name: "living", width: 5, length: 7, height: 3, x: 0, y: 0, z: 0, connected_to: ["kitchen", "hallway"] },
+                { name: "kitchen", width: 4, length: 4, height: 3, x: 5, y: 0, z: 0, connected_to: ["living", "dining"] },
+                { name: "dining", width: 4, length: 5, height: 3, x: 5, y: 0, z: 4, connected_to: ["kitchen"] },
+                { name: "hallway", width: 2, length: 5, height: 3, x: 0, y: 0, z: 7, connected_to: ["living", "bedroom1", "bedroom2", "bathroom"] },
+                { name: "bedroom1", width: 4, length: 4, height: 3, x: -4, y: 0, z: 7, connected_to: ["hallway"] },
+                { name: "bedroom2", width: 4, length: 4, height: 3, x: 2, y: 0, z: 7, connected_to: ["hallway"] },
+                { name: "bathroom", width: 3, length: 2, height: 3, x: 0, y: 0, z: 12, connected_to: ["hallway"] },
             ],
             windows: [
-                {
-                    room: "living",
-                    wall: "south",
-                    width: 2,
-                    height: 1.5,
-                    position: 0.5,
-                },
-                {
-                    room: "kitchen",
-                    wall: "east",
-                    width: 1.5,
-                    height: 1.2,
-                    position: 0.7,
-                },
-                {
-                    room: "bedroom1",
-                    wall: "west",
-                    width: 1.5,
-                    height: 1.2,
-                    position: 0.5,
-                },
-                {
-                    room: "bedroom2",
-                    wall: "east",
-                    width: 1.5,
-                    height: 1.2,
-                    position: 0.5,
-                },
+                { room: "living", wall: "south", width: 2, height: 1.5, position: 0.5 },
+                { room: "kitchen", wall: "east", width: 1.5, height: 1.2, position: 0.7 },
+                { room: "bedroom1", wall: "west", width: 1.5, height: 1.2, position: 0.5 },
+                { room: "bedroom2", wall: "east", width: 1.5, height: 1.2, position: 0.5 },
             ],
             doors: [
                 { from: "living", to: "kitchen", width: 1.2, height: 2.1 },
@@ -458,26 +187,21 @@ export default function CadGeneratorPage() {
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 
-// Initialize scene
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0xf0f0f0);
 
-// Initialize camera
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
 camera.position.set(10, 10, 10);
 
-// Initialize renderer
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.shadowMap.enabled = true;
 document.body.appendChild(renderer.domElement);
 
-// Add controls
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.target.set(0, 0, 0);
 controls.update();
 
-// Add lights
 const ambientLight = new THREE.AmbientLight(0x404040);
 scene.add(ambientLight);
 
@@ -486,33 +210,27 @@ directionalLight.position.set(10, 10, 10);
 directionalLight.castShadow = true;
 scene.add(directionalLight);
 
-// Create rooms
 function createRoom(name, width, length, height, x, y, z) {
-const geometry = new THREE.BoxGeometry(width, height, length);
-const edges = new THREE.EdgesGeometry(geometry);
-const material = new THREE.LineBasicMaterial({ color: 0x000000 });
-const wireframe = new THREE.LineSegments(edges, material);
-wireframe.position.set(x + width/2, y + height/2, z + length/2);
-scene.add(wireframe);
+  const geometry = new THREE.BoxGeometry(width, height, length);
+  const edges = new THREE.EdgesGeometry(geometry);
+  const material = new THREE.LineBasicMaterial({ color: 0x000000 });
+  const wireframe = new THREE.LineSegments(edges, material);
+  wireframe.position.set(x + width/2, y + height/2, z + length/2);
+  scene.add(wireframe);
 
-// Add floor
-const floorGeometry = new THREE.PlaneGeometry(width, length);
-const floorMaterial = new THREE.MeshStandardMaterial({ 
-  color: 0xcccccc, 
-  side: THREE.DoubleSide,
-  transparent: true,
-  opacity: 0.7
-});
-const floor = new THREE.Mesh(floorGeometry, floorMaterial);
-floor.rotation.x = Math.PI / 2;
-floor.position.set(x + width/2, 0.01, z + length/2);
-floor.receiveShadow = true;
-scene.add(floor);
+  const floorGeometry = new THREE.PlaneGeometry(width, length);
+  const floorMaterial = new THREE.MeshStandardMaterial({ 
+    color: 0xcccccc, side: THREE.DoubleSide, transparent: true, opacity: 0.7
+  });
+  const floor = new THREE.Mesh(floorGeometry, floorMaterial);
+  floor.rotation.x = Math.PI / 2;
+  floor.position.set(x + width/2, 0.01, z + length/2);
+  floor.receiveShadow = true;
+  scene.add(floor);
 
-return { wireframe, floor };
+  return { wireframe, floor };
 }
 
-// Create rooms
 const livingRoom = createRoom("living", 5, 7, 3, 0, 0, 0);
 const kitchen = createRoom("kitchen", 4, 4, 3, 5, 0, 0);
 const dining = createRoom("dining", 4, 5, 3, 5, 0, 4);
@@ -521,919 +239,190 @@ const bedroom1 = createRoom("bedroom1", 4, 4, 3, -4, 0, 7);
 const bedroom2 = createRoom("bedroom2", 4, 4, 3, 2, 0, 7);
 const bathroom = createRoom("bathroom", 3, 2, 3, 0, 0, 12);
 
-// Animation loop
 function animate() {
-requestAnimationFrame(animate);
-controls.update();
-renderer.render(scene, camera);
+  requestAnimationFrame(animate);
+  controls.update();
+  renderer.render(scene, camera);
 }
 
 animate();
 
-// Handle window resize
 window.addEventListener('resize', () => {
-camera.aspect = window.innerWidth / window.innerHeight;
-camera.updateProjectionMatrix();
-renderer.setSize(window.innerWidth, window.innerHeight);
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
 });`;
     };
 
-    // Resize handlers
-    const handleResizeStart = (e: React.MouseEvent) => {
-        e.preventDefault();
-
-        let position;
-        if (layoutMode === "horizontal") {
-            position = e.clientX;
-        } else {
-            position = e.clientY;
-        }
-
-        resizeStartRef.current = {
-            position,
-            startSize: inputPanelSize,
-        };
-
-        setIsResizing(true);
-
-        document.addEventListener("mousemove", handleResizeMove);
-        document.addEventListener("mouseup", handleResizeEnd);
-    };
-
-    const handleResizeMove = (e: MouseEvent) => {
-        if (!isResizing || !resizeStartRef.current || !containerRef.current)
-            return;
-
-        const containerRect = containerRef.current.getBoundingClientRect();
-        let newSize;
-
-        if (layoutMode === "horizontal") {
-            const containerWidth = containerRect.width;
-            const diff = e.clientX - resizeStartRef.current.position;
-            const diffPercent = (diff / containerWidth) * 100;
-            newSize = Math.min(
-                80,
-                Math.max(20, resizeStartRef.current.startSize + diffPercent)
-            );
-        } else {
-            const containerHeight = containerRect.height;
-            const diff = e.clientY - resizeStartRef.current.position;
-            const diffPercent = (diff / containerHeight) * 100;
-            newSize = Math.min(
-                80,
-                Math.max(20, resizeStartRef.current.startSize + diffPercent)
-            );
-        }
-
-        setInputPanelSize(newSize);
-    };
-
-    const handleResizeEnd = () => {
-        setIsResizing(false);
-        resizeStartRef.current = null;
-
-        document.removeEventListener("mousemove", handleResizeMove);
-        document.removeEventListener("mouseup", handleResizeEnd);
-    };
-
-    // Layout mode handlers
-    const toggleLayoutMode = () => {
-        setLayoutMode(layoutMode === "horizontal" ? "vertical" : "horizontal");
-    };
-
-    const toggleSidebar = () => {
-        setIsSidebarCollapsed(!isSidebarCollapsed);
-    };
-
-    // Processing status component
-    const ProcessingStatus = () => (
-        <Card className="mt-4">
-            <CardHeader className="py-3">
-                <CardTitle className="text-sm font-medium">
-                    Processing Status
-                </CardTitle>
-            </CardHeader>
-            <CardContent className="py-2 px-4">
-                <div className="space-y-2">
-                    <div className="flex justify-between items-center">
-                        <span className="text-xs">Input Processing</span>
-                        <div className="flex items-center">
-                            {processingSteps.sketch === "pending" && (
-                                <span className="text-xs text-muted-foreground">
-                                    Waiting
-                                </span>
-                            )}
-                            {processingSteps.sketch === "processing" && (
-                                <Loader2 className="h-3 w-3 animate-spin text-primary" />
-                            )}
-                            {processingSteps.sketch === "completed" && (
-                                <Check className="h-3 w-3 text-green-500" />
-                            )}
-                            {processingSteps.sketch === "error" && (
-                                <span className="text-xs text-destructive">
-                                    Error
-                                </span>
-                            )}
-                        </div>
-                    </div>
-
-                    <div className="flex justify-between items-center">
-                        <span className="text-xs">
-                            Computer Vision Analysis
-                        </span>
-                        <div className="flex items-center">
-                            {processingSteps.vision === "pending" && (
-                                <span className="text-xs text-muted-foreground">
-                                    Waiting
-                                </span>
-                            )}
-                            {processingSteps.vision === "processing" && (
-                                <Loader2 className="h-3 w-3 animate-spin text-primary" />
-                            )}
-                            {processingSteps.vision === "completed" && (
-                                <Check className="h-3 w-3 text-green-500" />
-                            )}
-                            {processingSteps.vision === "error" && (
-                                <span className="text-xs text-destructive">
-                                    Error
-                                </span>
-                            )}
-                        </div>
-                    </div>
-
-                    <div className="flex justify-between items-center">
-                        <span className="text-xs">Azure OpenAI Processing</span>
-                        <div className="flex items-center">
-                            {processingSteps.openai === "pending" && (
-                                <span className="text-xs text-muted-foreground">
-                                    Waiting
-                                </span>
-                            )}
-                            {processingSteps.openai === "processing" && (
-                                <Loader2 className="h-3 w-3 animate-spin text-primary" />
-                            )}
-                            {processingSteps.openai === "completed" && (
-                                <Check className="h-3 w-3 text-green-500" />
-                            )}
-                            {processingSteps.openai === "error" && (
-                                <span className="text-xs text-destructive">
-                                    Error
-                                </span>
-                            )}
-                        </div>
-                    </div>
-
-                    <div className="flex justify-between items-center">
-                        <span className="text-xs">3D Model Generation</span>
-                        <div className="flex items-center">
-                            {processingSteps.model === "pending" && (
-                                <span className="text-xs text-muted-foreground">
-                                    Waiting
-                                </span>
-                            )}
-                            {processingSteps.model === "processing" && (
-                                <Loader2 className="h-3 w-3 animate-spin text-primary" />
-                            )}
-                            {processingSteps.model === "completed" && (
-                                <Check className="h-3 w-3 text-green-500" />
-                            )}
-                            {processingSteps.model === "error" && (
-                                <span className="text-xs text-destructive">
-                                    Error
-                                </span>
-                            )}
-                        </div>
-                    </div>
-                </div>
-            </CardContent>
-        </Card>
-    );
-
-    // Viewer settings component
-    const ViewerSettings = () => (
-        <Card className="mt-4">
-            <CardHeader className="py-3">
-                <CardTitle className="text-sm font-medium">
-                    Visualization Settings
-                </CardTitle>
-            </CardHeader>
-            <CardContent className="py-2 px-4">
-                <div className="space-y-4">
-                    <div className="space-y-2">
-                        <div className="flex items-center justify-between">
-                            <Label
-                                htmlFor="show-grid"
-                                className="cursor-pointer text-xs"
-                            >
-                                Show Grid
-                            </Label>
-                            <Switch
-                                id="show-grid"
-                                checked={viewerSettings.showGrid}
-                                onCheckedChange={(checked) =>
-                                    setViewerSettings((prev) => ({
-                                        ...prev,
-                                        showGrid: checked,
-                                    }))
-                                }
-                            />
-                        </div>
-
-                        <div className="flex items-center justify-between">
-                            <Label
-                                htmlFor="show-axes"
-                                className="cursor-pointer text-xs"
-                            >
-                                Show Axes
-                            </Label>
-                            <Switch
-                                id="show-axes"
-                                checked={viewerSettings.showAxes}
-                                onCheckedChange={(checked) =>
-                                    setViewerSettings((prev) => ({
-                                        ...prev,
-                                        showAxes: checked,
-                                    }))
-                                }
-                            />
-                        </div>
-
-                        <div className="flex items-center justify-between">
-                            <Label
-                                htmlFor="wireframe"
-                                className="cursor-pointer text-xs"
-                            >
-                                Wireframe Mode
-                            </Label>
-                            <Switch
-                                id="wireframe"
-                                checked={viewerSettings.wireframe}
-                                onCheckedChange={(checked) =>
-                                    setViewerSettings((prev) => ({
-                                        ...prev,
-                                        wireframe: checked,
-                                    }))
-                                }
-                            />
-                        </div>
-                    </div>
-
-                    <Separator className="my-2" />
-
-                    <div className="space-y-2">
-                        <Label className="text-xs">Background Color</Label>
-                        <Select
-                            value={viewerSettings.backgroundColor}
-                            onValueChange={(value) =>
-                                setViewerSettings((prev) => ({
-                                    ...prev,
-                                    backgroundColor: value,
-                                }))
-                            }
-                        >
-                            <SelectTrigger className="h-8">
-                                <SelectValue placeholder="Select background color" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="#f0f0f0">
-                                    Light Gray
-                                </SelectItem>
-                                <SelectItem value="#ffffff">White</SelectItem>
-                                <SelectItem value="#000000">Black</SelectItem>
-                                <SelectItem value="#e6f7ff">
-                                    Sky Blue
-                                </SelectItem>
-                                <SelectItem value="#f0f9e8">
-                                    Mint Green
-                                </SelectItem>
-                            </SelectContent>
-                        </Select>
-                    </div>
-
-                    <div className="space-y-2">
-                        <Label className="text-xs">Lighting</Label>
-                        <div className="grid grid-cols-4 gap-2">
-                            <Button
-                                variant={
-                                    viewerSettings.lighting === "morning"
-                                        ? "default"
-                                        : "outline"
-                                }
-                                size="icon"
-                                className="h-8 w-8"
-                                onClick={() =>
-                                    setViewerSettings((prev) => ({
-                                        ...prev,
-                                        lighting: "morning",
-                                    }))
-                                }
-                                title="Morning Light"
-                            >
-                                <Sunrise className="h-4 w-4" />
-                            </Button>
-                            <Button
-                                variant={
-                                    viewerSettings.lighting === "day"
-                                        ? "default"
-                                        : "outline"
-                                }
-                                size="icon"
-                                className="h-8 w-8"
-                                onClick={() =>
-                                    setViewerSettings((prev) => ({
-                                        ...prev,
-                                        lighting: "day",
-                                    }))
-                                }
-                                title="Day Light"
-                            >
-                                <Sun className="h-4 w-4" />
-                            </Button>
-                            <Button
-                                variant={
-                                    viewerSettings.lighting === "evening"
-                                        ? "default"
-                                        : "outline"
-                                }
-                                size="icon"
-                                className="h-8 w-8"
-                                onClick={() =>
-                                    setViewerSettings((prev) => ({
-                                        ...prev,
-                                        lighting: "evening",
-                                    }))
-                                }
-                                title="Evening Light"
-                            >
-                                <Sunset className="h-4 w-4" />
-                            </Button>
-                            <Button
-                                variant={
-                                    viewerSettings.lighting === "night"
-                                        ? "default"
-                                        : "outline"
-                                }
-                                size="icon"
-                                className="h-8 w-8"
-                                onClick={() =>
-                                    setViewerSettings((prev) => ({
-                                        ...prev,
-                                        lighting: "night",
-                                    }))
-                                }
-                                title="Night Light"
-                            >
-                                <Moon className="h-4 w-4" />
-                            </Button>
-                        </div>
-                    </div>
-
-                    <Separator className="my-2" />
-
-                    <div className="space-y-2">
-                        <div className="flex justify-between">
-                            <Label className="text-xs">Zoom Level</Label>
-                            <span className="text-xs">
-                                {viewerSettings.zoom.toFixed(1)}x
-                            </span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                            <Button
-                                variant="outline"
-                                size="icon"
-                                className="h-7 w-7"
-                                onClick={() => handleZoom("out")}
-                                disabled={viewerSettings.zoom <= 0.5}
-                            >
-                                <ZoomOut className="h-3.5 w-3.5" />
-                            </Button>
-                            <Slider
-                                value={[viewerSettings.zoom]}
-                                min={0.5}
-                                max={3}
-                                step={0.1}
-                                onValueChange={(value) =>
-                                    setViewerSettings((prev) => ({
-                                        ...prev,
-                                        zoom: value[0],
-                                    }))
-                                }
-                            />
-                            <Button
-                                variant="outline"
-                                size="icon"
-                                className="h-7 w-7"
-                                onClick={() => handleZoom("in")}
-                                disabled={viewerSettings.zoom >= 3}
-                            >
-                                <ZoomIn className="h-3.5 w-3.5" />
-                            </Button>
-                        </div>
-                    </div>
-                </div>
-            </CardContent>
-        </Card>
-    );
-
-    // Layout toolbar
-    const LayoutToolbar = () => (
-        <div className="flex items-center justify-between mb-4 bg-purple-50/50 border border-purple-100 rounded-lg p-2">
-            <div className="flex items-center gap-2">
-                <Button
-                    variant="ghost"
-                    size="sm"
-                    className={`h-8 px-2 ${layoutMode === "horizontal" ? "bg-muted" : ""
-                        }`}
-                    onClick={() => setLayoutMode("horizontal")}
-                    title="Horizontal Split"
-                >
-                    <LayoutPanelLeft className="h-4 w-4 mr-1" />
-                    <span className="text-xs">Horizontal</span>
-                </Button>
-                <Button
-                    variant="ghost"
-                    size="sm"
-                    className={`h-8 px-2 ${layoutMode === "vertical" ? "bg-muted" : ""
-                        }`}
-                    onClick={() => setLayoutMode("vertical")}
-                    title="Vertical Split"
-                >
-                    <LayoutPanelTop className="h-4 w-4 mr-1" />
-                    <span className="text-xs">Vertical</span>
-                </Button>
-                <Separator orientation="vertical" className="h-6 mx-1" />
-                <Button
-                    variant="ghost"
-                    size="sm"
-                    className={`h-8 px-2 ${layoutMode === "input-focus" ? "bg-muted" : ""
-                        }`}
-                    onClick={() => setLayoutMode("input-focus")}
-                    title="Focus on Input"
-                >
-                    <Shrink className="h-4 w-4 mr-1" />
-                    <span className="text-xs">Input Focus</span>
-                </Button>
-                <Button
-                    variant="ghost"
-                    size="sm"
-                    className={`h-8 px-2 ${layoutMode === "viewer-focus" ? "bg-muted" : ""
-                        }`}
-                    onClick={() => setLayoutMode("viewer-focus")}
-                    title="Focus on Viewer"
-                >
-                    <Expand className="h-4 w-4 mr-1" />
-                    <span className="text-xs">Viewer Focus</span>
-                </Button>
-            </div>
-            <div className="flex items-center gap-2">
-                <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-8"
-                    onClick={() => {
-                        if (document.fullscreenElement) {
-                            document.exitFullscreen();
-                        } else {
-                            document.documentElement.requestFullscreen();
-                        }
-                    }}
-                >
-                    <Maximize2 className="h-4 w-4 mr-1" />
-                    <span className="text-xs">Fullscreen</span>
-                </Button>
-            </div>
-        </div>
-    );
-
-    // Determine layout classes based on mode
-    const getLayoutClasses = () => {
-        switch (layoutMode) {
-            case "horizontal":
-                return {
-                    container:
-                        "flex flex-col lg:flex-row h-[calc(100vh-10rem)]",
-                    inputPanel: `lg:w-[${inputPanelSize}%] flex-shrink-0`,
-                    resizer:
-                        "hidden lg:flex w-2 cursor-col-resize hover:bg-accent/50 active:bg-accent",
-                    viewerPanel: `lg:w-[${100 - inputPanelSize}%] flex-grow`,
-                };
-            case "vertical":
-                return {
-                    container: "flex flex-col h-[calc(100vh-10rem)]",
-                    inputPanel: `h-[${inputPanelSize}%] flex-shrink-0`,
-                    resizer:
-                        "h-2 cursor-row-resize hover:bg-accent/50 active:bg-accent",
-                    viewerPanel: `h-[${100 - inputPanelSize}%] flex-grow`,
-                };
-            case "input-focus":
-                return {
-                    container: "flex flex-col h-[calc(100vh-10rem)]",
-                    inputPanel: "h-full flex-grow",
-                    resizer: "hidden",
-                    viewerPanel: "hidden",
-                };
-            case "viewer-focus":
-                return {
-                    container: "flex flex-col h-[calc(100vh-10rem)]",
-                    inputPanel: "hidden",
-                    resizer: "hidden",
-                    viewerPanel: "h-full flex-grow",
-                };
-            default:
-                return {
-                    container:
-                        "flex flex-col lg:flex-row h-[calc(100vh-10rem)]",
-                    inputPanel: "lg:w-[40%] flex-shrink-0",
-                    resizer:
-                        "hidden lg:flex w-2 cursor-col-resize hover:bg-accent/50 active:bg-accent",
-                    viewerPanel: "lg:w-[60%] flex-grow",
-                };
-        }
-    };
-
-    const layoutClasses = getLayoutClasses();
+    // State for code panel visibility
+    const [showCodePanel, setShowCodePanel] = useState(false);
 
     return (
-        <div className="container mx-auto py-4 bg-white min-h-screen">
-            <div className="flex flex-col space-y-4">
-                {/* Compact API Notice */}
-                <div className="flex items-center gap-2 px-3 py-2 bg-purple-50 border border-purple-200 rounded-md text-xs sm:text-sm text-purple-800">
-                    <Info className="h-4 w-4 flex-shrink-0 text-purple-600" />
-                    <p>
-                        <strong className="font-semibold">Azure API keys needed.</strong> Using mock data if not configured.
-                        <span className="hidden sm:inline">Add keys to <code className="bg-purple-100 px-1 rounded text-xs">.env.local</code></span>
-                    </p>
+        <div className="h-[calc(100vh-5rem)] flex overflow-hidden bg-gray-50">
+            {/* ═══════ LEFT PANEL — Chat / Input ═══════ */}
+            <div className="w-[340px] min-w-[300px] flex flex-col border-r border-gray-200/80 bg-white z-10">
+                {/* Panel header */}
+                <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-100 bg-gradient-to-r from-purple-50/60 to-blue-50/60">
+                    <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-purple-600 to-blue-600 flex items-center justify-center shadow-lg shadow-purple-500/25">
+                        <Sparkles className="h-4 w-4 text-white" />
+                    </div>
+                    <div className="flex-1">
+                        <h2 className="text-sm font-bold text-gray-900 tracking-tight">AI Design Assistant</h2>
+                        <p className="text-[10px] text-gray-400 leading-tight">Describe, sketch, or speak your vision</p>
+                    </div>
                 </div>
 
-                <div className="flex justify-between items-center">
-                    <div className="flex items-center gap-2">
-                        <Sparkles className="h-6 w-6 text-purple-600" />
-                        <h1 className="text-2xl font-bold tracking-tight bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
-                            CAD Model Generator
-                        </h1>
-                    </div>
-                    <div className="flex items-center gap-2">
-                        {generatedModel && (
-                            <Button
-                                size="sm"
-                                onClick={handleSaveAsProject}
-                                className="shadow-lg shadow-purple-500/30 hover:shadow-xl hover:shadow-purple-500/40 transition-all"
-                            >
-                                <FolderPlus className="h-4 w-4 mr-1" />
-                                Save as Project
-                            </Button>
+                {/* Scrollable input area */}
+                <ScrollArea className="flex-1">
+                    <div className="p-3">
+                        <InputPanel
+                            onGenerateModel={handleGenerate}
+                            isGenerating={isGenerating}
+                        />
+
+                        {isGenerating && (
+                            <div className="mt-2 flex items-center gap-2 px-3 py-1.5 rounded-lg bg-purple-50/80 border border-purple-100">
+                                <div className="h-3 w-3 rounded-full border-2 border-purple-500 border-t-transparent animate-spin" />
+                                <span className="text-[11px] text-purple-600 font-medium">Generating model…</span>
+                            </div>
                         )}
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            className="border-2 hover:border-purple-300"
-                            onClick={() => {
-                                if (layoutMode === "viewer-focus") {
-                                    setLayoutMode("horizontal");
-                                } else {
-                                    setLayoutMode("viewer-focus");
-                                }
-                            }}
-                        >
-                            {layoutMode === "viewer-focus"
-                                ? "Show Input"
-                                : "Hide Input"}
-                        </Button>
                     </div>
-                </div>
+                </ScrollArea>
+            </div>
 
-                <LayoutToolbar />
+            {/* ═══════ CENTER — Grid Canvas / Workspace ═══════ */}
+            <div className="flex-1 relative overflow-hidden">
+                {/* Grid background */}
+                <div
+                    className="absolute inset-0"
+                    style={{
+                        backgroundImage: `
+                            linear-gradient(rgba(139, 92, 246, 0.06) 1px, transparent 1px),
+                            linear-gradient(90deg, rgba(139, 92, 246, 0.06) 1px, transparent 1px),
+                            linear-gradient(rgba(139, 92, 246, 0.03) 1px, transparent 1px),
+                            linear-gradient(90deg, rgba(139, 92, 246, 0.03) 1px, transparent 1px)
+                        `,
+                        backgroundSize: '100px 100px, 100px 100px, 20px 20px, 20px 20px',
+                    }}
+                />
 
-                <div ref={containerRef} className={layoutClasses.container}>
-                    {/* Input Panel */}
-                    <div
-                        className={`${layoutClasses.inputPanel} overflow-auto`}
-                    >
-                        <div className="h-full flex flex-col">
-                            <InputPanel
-                                onGenerateModel={handleGenerate}
-                                isGenerating={isGenerating}
-                            />
+                {/* Canvas content */}
+                <div className="relative z-10 h-full flex flex-col">
+                    {/* Toolbar strip */}
+                    <div className="flex items-center justify-between px-4 py-2 bg-white/80 backdrop-blur-sm border-b border-gray-200/60">
+                        <h1 className="text-base font-bold tracking-tight bg-gradient-to-r from-purple-600 via-violet-500 to-blue-600 bg-clip-text text-transparent">
+                            Workspace
+                        </h1>
 
-                            {isGenerating && <ProcessingStatus />}
-
-                            {generatedModel && layoutMode !== "vertical" && (
-                                <ViewerSettings />
+                        <div className="flex items-center gap-2">
+                            {/* Save as Project */}
+                            {generatedModel && (
+                                <Button
+                                    size="sm"
+                                    className="h-7 text-xs gap-1.5 bg-gradient-to-r from-purple-600 to-blue-600 text-white shadow-md shadow-purple-500/20 hover:shadow-lg hover:shadow-purple-500/30 transition-all"
+                                    onClick={handleSaveAsProject}
+                                >
+                                    <FolderPlus className="h-3.5 w-3.5" />
+                                    Save Project
+                                </Button>
                             )}
+
+                            {/* Toggle code panel */}
+                            <Button
+                                variant={showCodePanel ? "secondary" : "outline"}
+                                size="sm"
+                                className="h-7 text-xs gap-1.5 border-gray-200 hover:border-purple-300 hover:text-purple-600"
+                                onClick={() => setShowCodePanel(!showCodePanel)}
+                            >
+                                <Code className="h-3.5 w-3.5" />
+                                Code
+                            </Button>
                         </div>
                     </div>
 
-                    {/* Resizer */}
-                    <div
-                        className={layoutClasses.resizer}
-                        onMouseDown={handleResizeStart}
-                    >
-                        <div className="h-full w-full flex items-center justify-center">
-                            <GripVertical className="h-5 w-5 text-muted-foreground/40" />
-                        </div>
-                    </div>
-
-                    {/* Viewer Panel */}
-                    <div
-                        className={`${layoutClasses.viewerPanel} overflow-auto`}
-                    >
-                        <div className="h-full flex flex-col">
-                            <Card className="flex-grow overflow-hidden">
-                                <CardContent className="p-0 h-full">
-                                    <Tabs
-                                        value={activeTab}
-                                        onValueChange={setActiveTab}
-                                        className="h-full flex flex-col"
-                                    >
-                                        <div className="flex justify-between items-center p-3 border-b">
-                                            <CardTitle className="text-base font-medium">
-                                                Generated Model
-                                            </CardTitle>
-                                            <div className="flex items-center gap-2">
-                                                <TabsList>
-                                                    <TabsTrigger
-                                                        value="visual"
-                                                        className="text-xs px-3 py-1.5"
-                                                    >
-                                                        Visual
-                                                    </TabsTrigger>
-                                                    <TabsTrigger
-                                                        value="code"
-                                                        className="text-xs px-3 py-1.5"
-                                                    >
-                                                        Code
-                                                    </TabsTrigger>
-                                                    <TabsTrigger
-                                                        value="json"
-                                                        className="text-xs px-3 py-1.5"
-                                                    >
-                                                        JSON
-                                                    </TabsTrigger>
-                                                </TabsList>
-
-                                                {layoutMode === "vertical" &&
-                                                    generatedModel && (
-                                                        <Select
-                                                            value={
-                                                                viewerSettings.lighting
-                                                            }
-                                                            onValueChange={(
-                                                                value
-                                                            ) =>
-                                                                setViewerSettings(
-                                                                    (prev) => ({
-                                                                        ...prev,
-                                                                        lighting:
-                                                                            value,
-                                                                    })
-                                                                )
-                                                            }
-                                                        >
-                                                            <SelectTrigger className="h-8 w-[110px]">
-                                                                <SelectValue placeholder="Lighting" />
-                                                            </SelectTrigger>
-                                                            <SelectContent>
-                                                                <SelectItem value="morning">
-                                                                    Morning
-                                                                </SelectItem>
-                                                                <SelectItem value="day">
-                                                                    Day
-                                                                </SelectItem>
-                                                                <SelectItem value="evening">
-                                                                    Evening
-                                                                </SelectItem>
-                                                                <SelectItem value="night">
-                                                                    Night
-                                                                </SelectItem>
-                                                            </SelectContent>
-                                                        </Select>
-                                                    )}
-                                            </div>
-                                        </div>
-
-                                        <div className="flex-1 overflow-hidden">
-                                            <TabsContent
-                                                value="visual"
-                                                className="h-full m-0 p-0"
-                                            >
-                                                {generatedModel ? (
-                                                    <div className="relative h-full">
-                                                        <CadModelViewer
-                                                            modelData={
-                                                                generatedModel
-                                                            }
-                                                            settings={
-                                                                viewerSettings
-                                                            }
-                                                        />
-
-                                                        <div className="absolute bottom-4 right-4 flex space-x-2">
-                                                            <Button
-                                                                variant="secondary"
-                                                                size="sm"
-                                                                className="gap-2 bg-background/80 backdrop-blur-sm hover:bg-background/90"
-                                                                onClick={() =>
-                                                                    handleSaveModel(
-                                                                        "gltf"
-                                                                    )
-                                                                }
-                                                            >
-                                                                <Save className="h-4 w-4" />
-                                                                Save as GLTF
-                                                            </Button>
-                                                            <Button
-                                                                variant="secondary"
-                                                                size="sm"
-                                                                className="gap-2 bg-background/80 backdrop-blur-sm hover:bg-background/90"
-                                                                onClick={() =>
-                                                                    handleSaveModel(
-                                                                        "obj"
-                                                                    )
-                                                                }
-                                                            >
-                                                                <Save className="h-4 w-4" />
-                                                                Save as OBJ
-                                                            </Button>
-                                                            <Button
-                                                                variant="secondary"
-                                                                size="sm"
-                                                                className="gap-2 bg-background/80 backdrop-blur-sm hover:bg-background/90"
-                                                                onClick={() => {
-                                                                    const viewerElement =
-                                                                        document.querySelector(
-                                                                            ".cad-viewer-container"
-                                                                        );
-                                                                    if (
-                                                                        viewerElement
-                                                                    ) {
-                                                                        if (
-                                                                            document.fullscreenElement
-                                                                        ) {
-                                                                            document.exitFullscreen();
-                                                                        } else {
-                                                                            viewerElement.requestFullscreen();
-                                                                        }
-                                                                    }
-                                                                }}
-                                                            >
-                                                                <Maximize2 className="h-4 w-4" />
-                                                                Fullscreen
-                                                            </Button>
-                                                        </div>
-                                                    </div>
-                                                ) : (
-                                                    <div className="h-full flex items-center justify-center bg-muted/30">
-                                                        <div className="text-center p-6">
-                                                            <Wand2 className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                                                            <h3 className="text-lg font-medium mb-2">
-                                                                No Model
-                                                                Generated Yet
-                                                            </h3>
-                                                            <p className="text-muted-foreground max-w-md">
-                                                                Use the input
-                                                                panel to
-                                                                describe your
-                                                                building or
-                                                                space, then
-                                                                click 'Generate
-                                                                CAD Model'.
-                                                            </p>
-                                                        </div>
-                                                    </div>
-                                                )}
-                                            </TabsContent>
-
-                                            <TabsContent
-                                                value="code"
-                                                className="h-full m-0 p-0"
-                                            >
-                                                {generatedCode ? (
-                                                    <div className="relative h-full">
-                                                        <ScrollArea className="h-full">
-                                                            <pre
-                                                                ref={codeRef}
-                                                                className="p-4 text-sm font-mono"
-                                                            >
-                                                                <code>
-                                                                    {
-                                                                        generatedCode
-                                                                    }
-                                                                </code>
-                                                            </pre>
-                                                        </ScrollArea>
-
-                                                        <div className="absolute top-4 right-4">
-                                                            <Button
-                                                                variant="secondary"
-                                                                size="sm"
-                                                                className="gap-2"
-                                                                onClick={
-                                                                    handleCopyCode
-                                                                }
-                                                            >
-                                                                {copied ? (
-                                                                    <>
-                                                                        <Check className="h-4 w-4" />
-                                                                        Copied!
-                                                                    </>
-                                                                ) : (
-                                                                    <>
-                                                                        <Copy className="h-4 w-4" />
-                                                                        Copy
-                                                                        Code
-                                                                    </>
-                                                                )}
-                                                            </Button>
-                                                        </div>
-                                                    </div>
-                                                ) : (
-                                                    <div className="h-full flex items-center justify-center bg-muted/30">
-                                                        <div className="text-center p-6">
-                                                            <Code className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                                                            <h3 className="text-lg font-medium mb-2">
-                                                                No Code
-                                                                Generated Yet
-                                                            </h3>
-                                                            <p className="text-muted-foreground max-w-md">
-                                                                Generate a model
-                                                                first to see the
-                                                                corresponding
-                                                                Three.js code.
-                                                            </p>
-                                                        </div>
-                                                    </div>
-                                                )}
-                                            </TabsContent>
-
-                                            <TabsContent
-                                                value="json"
-                                                className="h-full m-0 p-0"
-                                            >
-                                                {generatedModel ? (
-                                                    <div className="relative h-full">
-                                                        <ScrollArea className="h-full">
-                                                            <pre className="p-4 text-sm font-mono">
-                                                                <code>
-                                                                    {JSON.stringify(
-                                                                        generatedModel,
-                                                                        null,
-                                                                        2
-                                                                    )}
-                                                                </code>
-                                                            </pre>
-                                                        </ScrollArea>
-
-                                                        <div className="absolute top-4 right-4">
-                                                            <Button
-                                                                variant="secondary"
-                                                                size="sm"
-                                                                className="gap-2"
-                                                                onClick={() => {
-                                                                    navigator.clipboard.writeText(
-                                                                        JSON.stringify(
-                                                                            generatedModel,
-                                                                            null,
-                                                                            2
-                                                                        )
-                                                                    );
-                                                                    toast({
-                                                                        title: "JSON copied",
-                                                                        description:
-                                                                            "The model data has been copied to your clipboard.",
-                                                                    });
-                                                                }}
-                                                            >
-                                                                <Copy className="h-4 w-4" />
-                                                                Copy JSON
-                                                            </Button>
-                                                        </div>
-                                                    </div>
-                                                ) : (
-                                                    <div className="h-full flex items-center justify-center bg-muted/30">
-                                                        <div className="text-center p-6">
-                                                            <Code className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                                                            <h3 className="text-lg font-medium mb-2">
-                                                                No JSON
-                                                                Generated Yet
-                                                            </h3>
-                                                            <p className="text-muted-foreground max-w-md">
-                                                                Generate a model
-                                                                first to see the
-                                                                structured JSON
-                                                                data.
-                                                            </p>
-                                                        </div>
-                                                    </div>
-                                                )}
-                                            </TabsContent>
-                                        </div>
-                                    </Tabs>
-                                </CardContent>
-                            </Card>
-                        </div>
+                    {/* Main canvas area — 3D Viewer or empty state */}
+                    <div className="flex-1 relative">
+                        {generatedModel ? (
+                            <div className="absolute inset-0">
+                                <CadModelViewer
+                                    modelData={generatedModel}
+                                    settings={viewerSettings}
+                                />
+                            </div>
+                        ) : (
+                            <div className="absolute inset-0 flex items-center justify-center">
+                                <div className="text-center max-w-sm">
+                                    <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-purple-100 to-blue-100 flex items-center justify-center mx-auto mb-5 shadow-inner">
+                                        <Wand2 className="h-8 w-8 text-purple-400" />
+                                    </div>
+                                    <h3 className="text-lg font-semibold text-gray-600 mb-1.5">Your canvas is ready</h3>
+                                    <p className="text-sm text-gray-400 leading-relaxed">
+                                        Describe your building, upload a sketch, or use voice — then hit <strong className="text-purple-600">Generate</strong>.
+                                    </p>
+                                    <div className="mt-5 flex items-center justify-center gap-3 text-[10px] text-gray-400">
+                                        <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-purple-400" />Text</span>
+                                        <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-blue-400" />Sketch</span>
+                                        <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-violet-400" />Voice</span>
+                                        <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-pink-400" />Photo</span>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>
+
+            {/* ═══════ RIGHT PANEL — Code Only ═══════ */}
+            {showCodePanel && (
+                <div className="w-[380px] min-w-[320px] flex flex-col border-l border-gray-200/80 bg-gray-950 z-10">
+                    {/* Panel header */}
+                    <div className="flex items-center justify-between px-4 py-2.5 border-b border-gray-800">
+                        <div className="flex items-center gap-2">
+                            <Code className="h-4 w-4 text-purple-400" />
+                            <span className="text-sm font-semibold text-gray-200">Generated Code</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                            {generatedCode && (
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-7 gap-1.5 text-xs text-gray-400 hover:text-white hover:bg-gray-800"
+                                    onClick={handleCopyCode}
+                                >
+                                    {copied ? <><Check className="h-3 w-3 text-green-400" /> Copied</> : <><Copy className="h-3 w-3" /> Copy</>}
+                                </Button>
+                            )}
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-7 w-7 p-0 text-gray-500 hover:text-white hover:bg-gray-800"
+                                onClick={() => setShowCodePanel(false)}
+                            >
+                                <Shrink className="h-3.5 w-3.5" />
+                            </Button>
+                        </div>
+                    </div>
+
+                    {/* Code content */}
+                    <div className="flex-1 overflow-hidden">
+                        {generatedCode ? (
+                            <ScrollArea className="h-full">
+                                <pre ref={codeRef} className="p-4 text-xs font-mono text-gray-300 leading-relaxed">
+                                    <code>{generatedCode}</code>
+                                </pre>
+                            </ScrollArea>
+                        ) : (
+                            <div className="h-full flex items-center justify-center">
+                                <div className="text-center p-6">
+                                    <Code className="h-10 w-10 text-gray-700 mx-auto mb-3" />
+                                    <p className="text-sm text-gray-500">Three.js code will appear here</p>
+                                    <p className="text-xs text-gray-600 mt-1">Generate a model to see the code</p>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
