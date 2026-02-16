@@ -1,10 +1,15 @@
-declare namespace JSX {
-    interface IntrinsicElements {
-        'model-viewer': ModelViewerJSX & React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement>;
+import type { DetailedHTMLProps, HTMLAttributes } from 'react';
+
+declare global {
+    namespace JSX {
+        interface IntrinsicElements {
+            'model-viewer': ModelViewerJSX & DetailedHTMLProps<HTMLAttributes<HTMLElement>, HTMLElement>;
+        }
     }
 }
 
 interface ModelViewerJSX {
+    ref?: React.Ref<HTMLElement>;
     src?: string;
     poster?: string;
     alt?: string;
@@ -23,3 +28,5 @@ interface ModelViewerJSX {
     'field-of-view'?: string;
     loading?: 'auto' | 'lazy' | 'eager';
 }
+
+export {};
