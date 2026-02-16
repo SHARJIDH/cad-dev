@@ -29,25 +29,30 @@ export class InterpreterAgent extends BaseAgent {
         );
 
         try {
-            // Step 1: Pre-process the sketch if available
+            // Step 1: Detect if this is a modification request
+            const isModification = this.detectModification(input.prompt, input.currentModel, input.conversationHistory);
+
+            // Step 2: Pre-process the sketch if available
             let sketchAnalysis = null;
             if (input.sketchData) {
                 sketchAnalysis = await this.analyzeSketch(input.sketchData);
             }
 
-            // Step 2: Prepare the prompt for the LLM
-            const prompt = this.preparePrompt(input.prompt, sketchAnalysis);
+            // Step 3: Prepare the prompt for the LLM (with context if modification)
+            const prompt = this.preparePrompt(input.prompt, sketchAnalysis, input.currentModel, isModification);
 
-            // Step 3: Call the LLM to interpret requirements
+            // Step 4: Call the LLM to interpret requirements
             const llmResponse = await this.callLLM(prompt);
 
-            // Step 4: Parse and validate the response
+            // Step 5: Parse and validate the response
             const requirements = this.safeParseJSON(llmResponse);
 
             return {
                 originalPrompt: input.prompt,
                 sketchAnalysisAvailable: !!sketchAnalysis,
                 requirements,
+                isModification,
+                currentModel: isModification ? input.currentModel : undefined,
             };
         } catch (error) {
             console.error("Interpreter Agent error:", error);
@@ -249,12 +254,20 @@ export class InterpreterAgent extends BaseAgent {
         };
     }
 
-    private preparePrompt(textPrompt: string, sketchAnalysis: any): string {
-        let prompt =
-            "Extract architectural requirements from the following information:\n\n";
+    private preparePrompt(textPrompt: string, sketchAnalysis: any, currentModel?: any, isModification?: boolean): string {
+        let prompt = '';
 
-        if (textPrompt) {
-            prompt += `TEXT DESCRIPTION:\n${textPrompt}\n\n`;
+        if (isModification && currentModel) {
+            prompt = `You are modifying an existing architectural design. The current design has the following structure:\n\n`;
+            prompt += `CURRENT DESIGN:\n${JSON.stringify(currentModel, null, 2)}\n\n`;
+            prompt += `USER'S MODIFICATION REQUEST:\n${textPrompt}\n\n`;
+            prompt += `IMPORTANT: You must keep the existing design and ONLY apply the requested changes. `;
+            prompt += `For example, if they say "add more windows", add windows to the existing rooms without changing room layouts.\n\n`;
+        } else {
+            prompt = "Extract architectural requirements from the following information:\n\n";
+            if (textPrompt) {
+                prompt += `TEXT DESCRIPTION:\n${textPrompt}\n\n`;
+            }
         }
 
         if (sketchAnalysis) {
@@ -265,14 +278,46 @@ export class InterpreterAgent extends BaseAgent {
             )}\n\n`;
         }
 
-        prompt += `Based on the above, extract the following in JSON format:
+        if (isModification) {
+            prompt += `Return a JSON object with:
+1. modificationType: "add_windows", "add_rooms", "resize", "change_style", etc.
+2. targetRooms: which rooms to modify (or "all")
+3. changes: specific changes to apply
+4. preserveExisting: true (ALWAYS keep existing structure)
+
+Example for "add more windows":
+{
+  "modificationType": "add_windows",
+  "targetRooms": "all",
+  "changes": {
+    "windowsPerWall": 2,
+    "windowSize": "standard"
+  },
+  "preserveExisting": true
+}`;
+        } else {
+            prompt += `Based on the above, extract the following in JSON format:
 1. Rooms: types, dimensions, and relationships
 2. Design preferences: style, materials, etc.
 3. Special features: windows, doors, etc.
 4. Constraints: budget, accessibility, etc.
 
 Format your response as a valid JSON object with these elements.`;
+        }
 
         return prompt;
+    }
+
+    private detectModification(prompt: string, currentModel: any, conversationHistory?: any[]): boolean {
+        if (!currentModel) return false;
+
+        const modificationKeywords = [
+            'add', 'remove', 'delete', 'change', 'modify', 'update', 'increase', 'decrease',
+            'more', 'less', 'bigger', 'smaller', 'resize', 'adjust', 'edit', 'alter',
+            'expand', 'shrink', 'extend', 'reduce', 'improve', 'fix'
+        ];
+
+        const lowerPrompt = prompt.toLowerCase();
+        return modificationKeywords.some(keyword => lowerPrompt.includes(keyword));
     }
 }

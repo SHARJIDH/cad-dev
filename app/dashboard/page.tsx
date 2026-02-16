@@ -7,7 +7,7 @@ import { PlusCircle, Sparkles, Clock, FolderOpen, TrendingUp, Zap, Building2 } f
 import { CardSpotlight } from "@/components/ui/card-spotlight";
 import { TextGenerateEffect } from "@/components/ui/text-generate-effect";
 import { MovingBorder } from "@/components/ui/moving-border";
-import { useProjects } from "@/lib/store";
+import { useProjects } from "@/hooks/use-projects";
 
 const getStatusColor = (status: string) => {
   switch (status) {
@@ -31,15 +31,23 @@ function timeAgo(isoDate: string): string {
 }
 
 export default function DashboardPage() {
-  const { projects } = useProjects();
-  const recentProjects = [...projects].sort((a, b) => new Date(b.lastUpdated).getTime() - new Date(a.lastUpdated).getTime()).slice(0, 6);
+  const { projects, isLoading } = useProjects();
+  const recentProjects = [...projects].sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()).slice(0, 6);
 
   const stats = [
-    { icon: FolderOpen, label: "Total Projects", value: String(projects.length), change: `${projects.filter(p => p.status === "Draft").length} drafts`, gradient: "from-purple-500 to-violet-500" },
-    { icon: TrendingUp, label: "Active Designs", value: String(projects.filter(p => p.status === "In Progress").length), change: `${projects.filter(p => p.status === "In Review").length} in review`, gradient: "from-blue-500 to-cyan-500" },
-    { icon: Zap, label: "Completed", value: String(projects.filter(p => p.status === "Complete").length), change: `${Math.round(projects.filter(p => p.status === "Complete").length / Math.max(projects.length, 1) * 100)}% completion rate`, gradient: "from-amber-500 to-orange-500" },
-    { icon: Building2, label: "Avg Progress", value: `${Math.round(projects.reduce((sum, p) => sum + p.progress, 0) / Math.max(projects.length, 1))}%`, change: "across all projects", gradient: "from-green-500 to-emerald-500" },
+    { icon: FolderOpen, label: "Total Projects", value: String(projects.length), change: `${projects.length} projects`, gradient: "from-purple-500 to-violet-500" },
+    { icon: TrendingUp, label: "Active Designs", value: String(projects.length), change: "in database", gradient: "from-blue-500 to-cyan-500" },
+    { icon: Zap, label: "Messages", value: String(projects.reduce((sum, p) => sum + (p._count?.messages || 0), 0)), change: "total conversations", gradient: "from-amber-500 to-orange-500" },
+    { icon: Building2, label: "Versions", value: String(projects.reduce((sum, p) => sum + (p._count?.versions || 0), 0)), change: "saved versions", gradient: "from-green-500 to-emerald-500" },
   ];
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <p className="text-gray-500">Loading dashboard...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-white">
@@ -93,23 +101,17 @@ export default function DashboardPage() {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
           {recentProjects.map((project) => (
-            <Link href={`/cad-generator`} key={project.id}>
+            <Link href={`/cad-generator?projectId=${project.id}`} key={project.id}>
               <CardSpotlight className="p-0 bg-white border-gray-100 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer overflow-hidden group">
-                <div className="aspect-video relative bg-gradient-to-br from-purple-100 to-blue-100 overflow-hidden">
-                  <img
-                    src={project.thumbnail}
-                    alt={project.title}
-                    className="object-cover w-full h-full opacity-80 group-hover:opacity-100 group-hover:scale-105 transition-all duration-500"
-                  />
-                  <span className={`absolute top-3 right-3 text-xs px-3 py-1 rounded-full font-semibold shadow-lg ${getStatusColor(project.status)}`}>
-                    {project.status}
-                  </span>
+                <div className="aspect-video relative bg-gradient-to-br from-purple-100 to-blue-100 overflow-hidden flex items-center justify-center">
+                  <Building2 className="h-16 w-16 text-purple-300" />
                 </div>
                 <div className="p-4">
-                  <CardTitle className="text-base text-gray-800 group-hover:text-purple-600 transition-colors">{project.title}</CardTitle>
+                  <CardTitle className="text-base text-gray-800 group-hover:text-purple-600 transition-colors">{project.name}</CardTitle>
+                  <p className="text-xs text-gray-500 mt-1 line-clamp-2">{project.description || 'No description'}</p>
                   <div className="flex items-center gap-1 mt-2 text-xs text-gray-400">
                     <Clock className="h-3 w-3" />
-                    {timeAgo(project.lastUpdated)}
+                    {timeAgo(project.updatedAt.toString())}
                   </div>
                 </div>
               </CardSpotlight>

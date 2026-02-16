@@ -10,6 +10,11 @@ export class DesignerAgent extends BaseAgent {
         console.log("Designer Agent processing requirements");
 
         try {
+            // Check if this is a modification request
+            if (input.isModification && input.currentModel) {
+                return await this.executeModification(input);
+            }
+
             // Step 1: Prepare the prompt with the requirements
             const prompt = this.preparePrompt(input.requirements);
 
@@ -39,6 +44,71 @@ export class DesignerAgent extends BaseAgent {
                 designCreated: false,
             };
         }
+    }
+
+    private async executeModification(input: AgentInput): Promise<AgentOutput> {
+        console.log("Designer Agent executing modification");
+
+        try {
+            const prompt = this.prepareModificationPrompt(input.requirements, input.currentModel);
+            const llmResponse = await this.callLLM(prompt, 0.3); // Lower temperature for consistency
+            const modifiedDesign = this.safeParseJSON(llmResponse);
+
+            // Ensure the modified design preserves the structure
+            const validatedDesign = this.validateModification(modifiedDesign, input.currentModel);
+
+            return {
+                requirements: input.requirements,
+                design: validatedDesign,
+            };
+        } catch (error) {
+            console.error("Designer Agent modification error:", error);
+            // Fallback: return current model unchanged
+            return {
+                requirements: input.requirements,
+                design: input.currentModel,
+            };
+        }
+    }
+
+    private prepareModificationPrompt(requirements: any, currentModel: any): string {
+        return `You are modifying an existing architectural design. Here is the current design:
+
+CURRENT DESIGN:
+${JSON.stringify(currentModel, null, 2)}
+
+MODIFICATION REQUEST:
+${JSON.stringify(requirements, null, 2)}
+
+CRITICAL INSTRUCTIONS:
+1. PRESERVE the existing room structure (names, dimensions, positions)
+2. ONLY modify what was specifically requested
+3. If adding windows, add them to existing rooms WITHOUT changing room layouts
+4. If adding doors, add connections WITHOUT moving rooms
+5. Maintain all existing spatial relationships
+
+Return the COMPLETE modified design in the same JSON format, with the requested changes applied.
+
+For example, if adding windows:
+- Keep all existing rooms exactly as they are
+- Add new window entries to the windows array
+- Do not change any room positions, dimensions, or names`;
+    }
+
+    private validateModification(modifiedDesign: any, originalModel: any): any {
+        // Ensure critical structure is preserved
+        if (!modifiedDesign || !modifiedDesign.rooms) {
+            console.warn("Modified design invalid, returning original");
+            return originalModel;
+        }
+
+        // Verify rooms haven't been unexpectedly changed
+        if (modifiedDesign.rooms.length < originalModel.rooms?.length) {
+            console.warn("Rooms were removed, restoring original rooms");
+            modifiedDesign.rooms = originalModel.rooms;
+        }
+
+        return modifiedDesign;
     }
 
     private preparePrompt(requirements: any): string {

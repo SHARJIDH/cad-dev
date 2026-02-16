@@ -28,13 +28,15 @@ interface InputPanelProps {
         photoData: string | null;
     }) => void;
     isGenerating: boolean;
+    hasConversationHistory?: boolean;
 }
 
-export function InputPanel({ onGenerateModel, isGenerating }: InputPanelProps) {
+export function InputPanel({ onGenerateModel, isGenerating, hasConversationHistory = false }: InputPanelProps) {
     // Input state
     const [textPrompt, setTextPrompt] = useState("");
     const [speechTranscript, setSpeechTranscript] = useState("");
     const [photoData, setPhotoData] = useState<string | null>(null);
+    const [hasPrompted, setHasPrompted] = useState(false);
 
     // Active tab state
     const [activeTab, setActiveTab] = useState<
@@ -70,7 +72,11 @@ export function InputPanel({ onGenerateModel, isGenerating }: InputPanelProps) {
 
     // Text prompt handlers
     const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-        setTextPrompt(e.target.value);
+        const nextValue = e.target.value;
+        setTextPrompt(nextValue);
+        if (!hasPrompted && nextValue.trim().length > 0) {
+            setHasPrompted(true);
+        }
     };
 
     // Speech recording handlers
@@ -338,12 +344,17 @@ export function InputPanel({ onGenerateModel, isGenerating }: InputPanelProps) {
         }
 
         // Call the parent function with all inputs
+        setHasPrompted(true);
         onGenerateModel({
             prompt: textPrompt || speechTranscript || "", // Use speech transcript as fallback if no text
             sketchData,
             speechData: speechTranscript || null,
             photoData,
         });
+
+        // Clear text input after submission
+        setTextPrompt("");
+        setSpeechTranscript("");
     };
 
     // Format time for recording display
@@ -365,6 +376,7 @@ export function InputPanel({ onGenerateModel, isGenerating }: InputPanelProps) {
     const handleExampleClick = (example: string) => {
         setTextPrompt(example);
         setActiveTab("text");
+        setHasPrompted(true);
     };
 
     // Input method help content
@@ -410,20 +422,22 @@ export function InputPanel({ onGenerateModel, isGenerating }: InputPanelProps) {
                     />
 
                     {/* Example prompts */}
-                    <div>
-                        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-2">Try an example</p>
-                        <div className="space-y-1.5">
-                            {examplePrompts.map((example, index) => (
-                                <button
-                                    key={index}
-                                    className="w-full text-left text-xs p-2 rounded-lg border border-gray-100 bg-gray-50/50 text-gray-600 hover:bg-purple-50 hover:border-purple-200 hover:text-purple-700 transition-all leading-relaxed group"
-                                    onClick={() => handleExampleClick(example)}
-                                >
-                                    <span className="opacity-80 group-hover:opacity-100">{example}</span>
-                                </button>
-                            ))}
+                    {!hasConversationHistory && !hasPrompted && textPrompt.trim().length === 0 && (
+                        <div>
+                            <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-2">Try an example</p>
+                            <div className="space-y-1.5">
+                                {examplePrompts.map((example, index) => (
+                                    <button
+                                        key={index}
+                                        className="w-full text-left text-xs p-2 rounded-lg border border-gray-100 bg-gray-50/50 text-gray-600 hover:bg-purple-50 hover:border-purple-200 hover:text-purple-700 transition-all leading-relaxed group"
+                                        onClick={() => handleExampleClick(example)}
+                                    >
+                                        <span className="opacity-80 group-hover:opacity-100">{example}</span>
+                                    </button>
+                                ))}
+                            </div>
                         </div>
-                    </div>
+                    )}
                 </div>
             )}
 

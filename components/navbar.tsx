@@ -26,8 +26,8 @@ const navItems = [
     { name: "Dashboard", link: "/dashboard" },
     { name: "Projects", link: "/projects" },
     { name: "CAD Generator", link: "/cad-generator" },
-    { name: "Analytics", link: "/analytics" },
-    { name: "Team", link: "/team" },
+    // { name: "Analytics", link: "/analytics" },
+    // { name: "Team", link: "/team" },
     { name: "Settings", link: "/settings" },
 ];
 

@@ -1,0 +1,167 @@
+// Prisma schema for CAD Generator with Supabase PostgreSQL
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  clerkId       String    @unique
+  email         String    @unique
+  name          String?
+  imageUrl      String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  // Relations
+  projects      Project[]
+  projectMembers ProjectMember[]
+  sentInvites   ProjectInvite[] @relation("InviteSender")
+  receivedInvites ProjectInvite[] @relation("InviteReceiver")
+  messages      ConversationMessage[]
+  comments      ProjectComment[]
+  activities    ProjectActivity[]
+  
+  @@map("users")
+}
+
+model Project {
+  id              String    @id @default(cuid())
+  name            String
+  description     String?
+  ownerId         String
+  owner           User      @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  isPublic        Boolean   @default(false)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  
+  // Relations
+  members         ProjectMember[]
+  invites         ProjectInvite[]
+  messages        ConversationMessage[]
+  versions        ProjectVersion[]
+  comments        ProjectComment[]
+  activities      ProjectActivity[]
+  
+  @@index([ownerId])
+  @@index([createdAt])
+  @@map("projects")
+}
+
+model ProjectMember {
+  id              String    @id @default(cuid())
+  projectId       String
+  project         Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  userId          String
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role            String    @default("viewer") // owner, editor, viewer
+  joinedAt        DateTime  @default(now())
+  
+  @@unique([projectId, userId])
+  @@index([userId])
+  @@map("project_members")
+}
+
+model ProjectInvite {
+  id              String    @id @default(cuid())
+  projectId       String
+  project         Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  senderId        String
+  sender          User      @relation("InviteSender", fields: [senderId], references: [id], onDelete: Cascade)
+  receiverId      String?
+  receiver        User?     @relation("InviteReceiver", fields: [receiverId], references: [id], onDelete: Cascade)
+  email           String
+  role            String    @default("viewer")
+  status          String    @default("pending") // pending, accepted, rejected, expired
+  token           String    @unique
+  expiresAt       DateTime
+  createdAt       DateTime  @default(now())
+  
+  @@index([projectId])
+  @@index([email])
+  @@index([token])
+  @@map("project_invites")
+}
+
+model ConversationMessage {
+  id              String    @id @default(cuid())
+  projectId       String
+  project         Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  userId          String?
+  user            User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  role            String    // user, assistant
+  content         String
+  type            String    @default("text") // text, image, code, model
+  metadata        Json?     // Additional data like model info, code language, etc.
+  createdAt       DateTime  @default(now())
+  
+  @@index([projectId])
+  @@index([createdAt])
+  @@map("conversation_messages")
+}
+
+model ProjectVersion {
+  id              String    @id @default(cuid())
+  projectId       String
+  project         Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  version         Int
+  name            String?
+  description     String?
+  modelData       Json      // The 3D model data
+  thumbnailUrl    String?
+  createdAt       DateTime  @default(now())
+  
+  @@unique([projectId, version])
+  @@index([projectId])
+  @@index([createdAt])
+  @@map("project_versions")
+}
+
+model ProjectComment {
+  id              String    @id @default(cuid())
+  projectId       String
+  project         Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  userId          String
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  content         String
+  metadata        Json?     // For things like position in 3D space, attached to specific element, etc.
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  
+  @@index([projectId])
+  @@index([createdAt])
+  @@map("project_comments")
+}
+
+model ProjectActivity {
+  id              String    @id @default(cuid())
+  projectId       String
+  project         Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  userId          String?
+  user            User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  action          String    // created, updated, invited, joined, exported, etc.
+  description     String
+  metadata        Json?
+  createdAt       DateTime  @default(now())
+  
+  @@index([projectId])
+  @@index([createdAt])
+  @@map("project_activities")
+}
+
+model ARSession {
+  id              String    @id @default(cuid())
+  sessionId       String    @unique // Unique identifier for the QR code
+  modelData       Json      // The 3D model data to display in AR
+  expiresAt       DateTime  // When this session expires
+  createdAt       DateTime  @default(now())
+  
+  @@index([sessionId])
+  @@index([expiresAt])
+  @@map("ar_sessions")
+}

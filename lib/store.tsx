@@ -6,6 +6,15 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 // Types — shared across the app
 // ============================================
 
+export interface Message {
+    id: string;
+    role: 'user' | 'assistant' | 'system';
+    content: string;
+    timestamp: string;
+    modelData?: any;
+    sketchData?: string;
+}
+
 export interface Project {
     id: string;
     title: string;
@@ -22,6 +31,7 @@ export interface Project {
     // Optional CAD data
     modelData?: any;
     generatedCode?: string;
+    conversationHistory?: Message[];
 }
 
 export interface TeamMember {

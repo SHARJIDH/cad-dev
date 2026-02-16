@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
     Copy,
@@ -10,41 +11,171 @@ import {
     Shrink,
     FolderPlus,
     Sparkles,
+    Download,
+    Layers,
+    Box,
+    Users,
+    DollarSign,
+    X,
 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { toast } from "@/components/ui/use-toast";
+import { toast } from "sonner";
 import { CadModelViewer } from "@/components/cad-model-viewer";
 import { InputPanel } from "@/components/input-panel";
-import { useProjects } from "@/lib/store";
+import { GenerationProgressIndicator } from "@/components/generation-progress";
+
+// Message type
+export interface Message {
+    id: string;
+    role: 'user' | 'assistant' | 'system';
+    content: string;
+    timestamp: string;
+    modelData?: any;
+    sketchData?: string;
+}
+import { GenerationProgress, StreamMessage } from "@/types/generation";
+import { ViewModeToggle, ViewMode } from "@/components/view-mode-toggle";
+import { FloorPlan2D } from "@/components/floor-plan-2d";
+import { ExportButton } from "@/components/export-button";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Bot, User, Eye, Shield, Smartphone } from "lucide-react";
+import { CostEstimator } from '@/components/cost-estimator';
+import { CodeComplianceChecker } from '@/components/code-compliance-checker';
+import { ARQRCode } from '@/components/ar-qr-code';
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { useProject } from "@/hooks/use-project";
+import { CreateProjectDialog } from "@/components/create-project-dialog";
+import { InviteMemberDialog } from "@/components/invite-member-dialog";
+import { Project } from "@/types/database";
 
 export default function CadGeneratorPage() {
-    const { addProject } = useProjects();
+    const searchParams = useSearchParams();
 
-    const handleSaveAsProject = () => {
-        if (!generatedModel && !prompt) {
-            toast({ title: "Nothing to save", description: "Generate a model first.", variant: "destructive" });
-            return;
-        }
-        addProject({
-            title: prompt ? prompt.slice(0, 60) : "Untitled CAD Project",
-            description: prompt || "Generated via CAD Model Generator",
-            status: "Draft",
-            client: "Personal",
-            team: [],
-            thumbnail: "/placeholder.svg?height=200&width=300",
-            tags: ["CAD Generated", "AI Design"],
-            favorite: false,
-            progress: generatedModel ? 30 : 10,
-            modelData: generatedModel || undefined,
-            generatedCode: generatedCode || undefined,
-        });
-        toast({ title: "Saved as project!", description: "Your design has been added to Projects." });
-    };
     const [prompt, setPrompt] = useState("");
     const [isGenerating, setIsGenerating] = useState(false);
     const [generatedModel, setGeneratedModel] = useState<any>(null);
     const [generatedCode, setGeneratedCode] = useState("");
     const [copied, setCopied] = useState(false);
+    const [conversationHistory, setConversationHistory] = useState<Message[]>([]);
+    const [currentProjectId, setCurrentProjectId] = useState<string | null>(null);
+    const [generationProgress, setGenerationProgress] = useState<GenerationProgress | null>(null);
+    const [viewMode, setViewMode] = useState<ViewMode>('3d');
+    const [showCodePanel, setShowCodePanel] = useState(false);
+    const [showCostEstimator, setShowCostEstimator] = useState(false);
+    const [showComplianceChecker, setShowComplianceChecker] = useState(false);
+    const [view2d, setView2d] = useState<'top' | 'front' | 'back' | 'left' | 'right'>('top');
+
+    // Database integration
+    const { project, addMessage, createVersion, messages, versions } = useProject(currentProjectId);
+
+    // Load project from URL parameter
+    useEffect(() => {
+        const projectId = searchParams.get('projectId');
+        if (projectId && projectId !== currentProjectId) {
+            setCurrentProjectId(projectId);
+        }
+    }, [searchParams]);
+
+    // Close cost estimator on ESC
+    useEffect(() => {
+        if (!showCostEstimator) return;
+        const onKeyDown = (event: KeyboardEvent) => {
+            if (event.key === 'Escape') {
+                setShowCostEstimator(false);
+            }
+        };
+        window.addEventListener('keydown', onKeyDown);
+        return () => window.removeEventListener('keydown', onKeyDown);
+    }, [showCostEstimator]);
+
+    // Close compliance checker on ESC
+    useEffect(() => {
+        if (!showComplianceChecker) return;
+        const onKeyDown = (event: KeyboardEvent) => {
+            if (event.key === 'Escape') {
+                setShowComplianceChecker(false);
+            }
+        };
+        window.addEventListener('keydown', onKeyDown);
+        return () => window.removeEventListener('keydown', onKeyDown);
+    }, [showComplianceChecker]);
+
+    // Load conversation history and latest model when project data is available
+    useEffect(() => {
+        if (messages && messages.length > 0) {
+            console.log('Loading messages from database:', messages);
+            
+            // Convert database messages to conversation format
+            const loadedMessages: Message[] = messages.map(msg => {
+                let metadata = msg.metadata;
+                // Parse metadata if it's a string
+                if (typeof metadata === 'string') {
+                    try {
+                        metadata = JSON.parse(metadata);
+                    } catch (e) {
+                        console.error('Failed to parse metadata:', e);
+                        metadata = null;
+                    }
+                }
+                
+                return {
+                    id: msg.id,
+                    role: msg.role as 'user' | 'assistant',
+                    content: msg.content,
+                    timestamp: msg.createdAt.toString(),
+                    modelData: metadata?.modelData,
+                };
+            });
+            setConversationHistory(loadedMessages);
+
+            // Load the most recent model data
+            const lastMessageWithModel = [...messages].reverse().find(msg => {
+                let metadata = msg.metadata;
+                if (typeof metadata === 'string') {
+                    try {
+                        metadata = JSON.parse(metadata);
+                    } catch (e) {
+                        return false;
+                    }
+                }
+                return metadata?.modelData;
+            });
+            
+            if (lastMessageWithModel) {
+                let metadata = lastMessageWithModel.metadata;
+                if (typeof metadata === 'string') {
+                    try {
+                        metadata = JSON.parse(metadata);
+                    } catch (e) {
+                        console.error('Failed to parse metadata:', e);
+                    }
+                }
+                if (metadata?.modelData) {
+                    console.log('Loading model from message:', metadata.modelData);
+                    setGeneratedModel(metadata.modelData);
+                }
+            }
+        }
+
+        // Load latest version if available
+        if (versions && versions.length > 0) {
+            console.log('Loading versions from database:', versions);
+            const latestVersion = versions[0]; // versions are ordered by version desc
+            if (latestVersion.modelData) {
+                let modelData = latestVersion.modelData;
+                // Parse if string
+                if (typeof modelData === 'string') {
+                    try {
+                        modelData = JSON.parse(modelData);
+                    } catch (e) {
+                        console.error('Failed to parse modelData:', e);
+                    }
+                }
+                console.log('Loading model from version:', modelData);
+                setGeneratedModel(modelData);
+            }
+        }
+    }, [messages, versions]);
 
     // Default viewer settings (no settings panel — just sensible defaults)
     const viewerSettings = {
@@ -54,11 +185,36 @@ export default function CadGeneratorPage() {
         lighting: "day",
         wireframe: false,
         zoom: 1,
-        showMeasurements: false,
+        showMeasurements: true,
         roomLabels: true,
     };
 
     const codeRef = useRef<HTMLPreElement>(null);
+
+    const addToConversation = async (role: 'user' | 'assistant', content: string, modelData?: any) => {
+        const message: Message = {
+            id: `msg_${Date.now()}_${Math.random()}`,
+            role,
+            content,
+            timestamp: new Date().toISOString(),
+            modelData,
+        };
+        setConversationHistory(prev => [...prev, message]);
+
+        // Save to database if project exists
+        if (currentProjectId && addMessage) {
+            try {
+                await addMessage({
+                    role,
+                    content,
+                    type: modelData ? 'model' : 'text',
+                    metadata: modelData ? { modelData } : undefined,
+                });
+            } catch (error) {
+                console.error('Failed to save message to database:', error);
+            }
+        }
+    };
 
     const handleGenerate = async (inputs: {
         prompt?: string;
@@ -67,78 +223,114 @@ export default function CadGeneratorPage() {
         photoData?: string | null;
     }) => {
         setIsGenerating(true);
+        setGenerationProgress({
+            stage: 'interpreting',
+            currentAgent: 'Starting',
+            message: 'Initializing generation...',
+            percentage: 0,
+        });
 
         try {
             const { prompt, sketchData, speechData, photoData } = inputs;
-            setPrompt(prompt || "");
+            const userPrompt = prompt || speechData || "Generate a CAD model";
+            setPrompt(userPrompt);
 
-            const payload: {
-                prompt: string;
-                sketchData?: string;
-                photoData?: string;
-            } = {
-                prompt: prompt || speechData || "Generate a CAD model based on this input"
+            addToConversation('user', userPrompt, sketchData ? { hasSketch: true } : undefined);
+
+            const payload: any = { 
+                prompt: userPrompt,
+                conversationHistory: conversationHistory,
+                currentModel: generatedModel
             };
-
             if (sketchData) payload.sketchData = sketchData;
             if (photoData) payload.photoData = photoData;
 
-            console.log("Generating CAD model with Azure services:", {
-                hasPrompt: !!payload.prompt,
-                hasSketchData: !!payload.sketchData,
-                hasPhotoData: !!payload.photoData,
-                hasSpeechData: !!speechData,
-            });
-
-            const response = await fetch("/api/cad-generator", {
+            const response = await fetch("/api/cad-generator-stream", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(payload),
             });
 
             if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}));
-                throw new Error(
-                    `Failed to generate model with Azure: ${response.status} ${response.statusText}${errorData.details ? ` - ${errorData.details}` : ""}`
-                );
+                throw new Error('Generation failed');
             }
 
-            const data = await response.json();
-            console.log("Azure API Response:", data);
+            const reader = response.body?.getReader();
+            const decoder = new TextDecoder();
 
-            if (!data.modelData || !data.code) {
-                throw new Error("Invalid response format from Azure API");
+            if (!reader) {
+                throw new Error('No response reader');
             }
 
-            if (!Array.isArray(data.modelData.rooms) || data.modelData.rooms.length === 0) {
-                throw new Error("Invalid model data from Azure: no rooms found");
+            let buffer = '';
+
+            while (true) {
+                const { done, value } = await reader.read();
+                
+                if (done) break;
+
+                buffer += decoder.decode(value, { stream: true });
+                const lines = buffer.split('\n');
+                buffer = lines.pop() || '';
+
+                for (const line of lines) {
+                    if (line.startsWith('data: ')) {
+                        const message: StreamMessage = JSON.parse(line.slice(6));
+                        
+                        if (message.type === 'progress') {
+                            setGenerationProgress(message.data as GenerationProgress);
+                        } else if (message.type === 'complete') {
+                            const data = message.data as any;
+                            if (data.modelData) {
+                                setGeneratedModel(data.modelData);
+                                setGeneratedCode(data.code || '');
+                                addToConversation('assistant', 'Design generated successfully!', data.modelData);
+                                toast.success('CAD model generated!');
+                            }
+                        } else if (message.type === 'error') {
+                            throw new Error((message.data as any).error);
+                        }
+                    }
+                }
             }
-
-            setGeneratedModel(data.modelData);
-            setGeneratedCode(data.code);
-
-            toast({
-                title: "Model generated successfully",
-                description: "Your CAD model has been created using Azure AI.",
-            });
         } catch (error) {
-            console.error("Error with Azure services:", error);
-
-            const mockResponse = {
-                modelData: generateMockModelData(prompt || "Floor plan from input"),
-                code: generateMockCode(prompt || "Floor plan from input"),
-            };
-
-            setGeneratedModel(mockResponse.modelData);
-            setGeneratedCode(mockResponse.code);
-
-            toast({
-                title: "Using fallback data",
-                description: "Could not connect to Azure API. Using sample data instead.",
-                variant: "destructive",
-            });
+            console.error("Generation error:", error);
+            toast.error(`Failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+            // Fallback to mock data
+            const mockData = generateMockModelData(prompt);
+            setGeneratedModel(mockData);
+            setGeneratedCode(generateMockCode(prompt));
+            addToConversation('assistant', 'Generated model (using fallback data)', mockData);
         } finally {
             setIsGenerating(false);
+            setGenerationProgress(null);
+        }
+    };
+
+    const handleSaveAsProject = async () => {
+        if (!generatedModel && !prompt) {
+            toast.error("Nothing to save. Generate a model first.");
+            return;
+        }
+
+        try {
+            if (currentProjectId && createVersion) {
+                // Save as new version in existing project
+                await createVersion({
+                    name: `Version ${(project?.versions?.length || 0) + 1}`,
+                    description: `Auto-saved version`,
+                    modelData: generatedModel,
+                });
+                toast.success("New version saved!");
+            } else {
+                // No project selected - prompt user to create one
+                toast.info("Create a project first to save your work!", {
+                    description: "Click 'New Project' button to get started"
+                });
+            }
+        } catch (error) {
+            console.error('Failed to save project:', error);
+            toast.error('Failed to save project');
         }
     };
 
@@ -146,10 +338,7 @@ export default function CadGeneratorPage() {
         navigator.clipboard.writeText(generatedCode);
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
-        toast({
-            title: "Code copied",
-            description: "The generated code has been copied to your clipboard.",
-        });
+        toast.success("Code copied to clipboard!");
     };
 
     // Mock function to generate model data based on prompt
@@ -254,43 +443,110 @@ window.addEventListener('resize', () => {
 });`;
     };
 
-    // State for code panel visibility
-    const [showCodePanel, setShowCodePanel] = useState(false);
-
     return (
         <div className="h-[calc(100vh-5rem)] flex overflow-hidden bg-gray-50">
-            {/* ═══════ LEFT PANEL — Chat / Input ═══════ */}
-            <div className="w-[340px] min-w-[300px] flex flex-col border-r border-gray-200/80 bg-white z-10">
+            {/* ═══════ LEFT PANEL — Chat Interface ═══════ */}
+            <div className="w-[420px] min-w-[360px] flex flex-col border-r border-gray-200/80 bg-white z-10">
                 {/* Panel header */}
                 <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-100 bg-gradient-to-r from-purple-50/60 to-blue-50/60">
                     <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-purple-600 to-blue-600 flex items-center justify-center shadow-lg shadow-purple-500/25">
                         <Sparkles className="h-4 w-4 text-white" />
                     </div>
                     <div className="flex-1">
-                        <h2 className="text-sm font-bold text-gray-900 tracking-tight">AI Design Assistant</h2>
-                        <p className="text-[10px] text-gray-400 leading-tight">Describe, sketch, or speak your vision</p>
+                        <h2 className="text-sm font-bold text-gray-900 tracking-tight">AI Design Chat</h2>
+                        <p className="text-[10px] text-gray-400 leading-tight">
+                            {project ? project.name : 'Design, refine, and iterate'}
+                        </p>
+                    </div>
+                    <div className="flex items-center gap-1">
+                        <CreateProjectDialog
+                            onProjectCreated={(newProject: Project) => {
+                                setCurrentProjectId(newProject.id);
+                                toast.success('Project created!');
+                            }}
+                        />
+                        {currentProjectId && project && (
+                            <InviteMemberDialog projectId={currentProjectId} />
+                        )}
                     </div>
                 </div>
 
-                {/* Scrollable input area */}
-                <ScrollArea className="flex-1">
-                    <div className="p-3">
-                        <InputPanel
-                            onGenerateModel={handleGenerate}
+                {/* Conversation History */}
+                <ScrollArea className="flex-1 p-4">
+                    {conversationHistory.length === 0 ? (
+                        <div className="text-center py-12">
+                            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-100 to-blue-100 flex items-center justify-center mx-auto mb-3">
+                                <Bot className="h-6 w-6 text-purple-400" />
+                            </div>
+                            <p className="text-sm text-gray-500 mb-1">Start a conversation</p>
+                            <p className="text-xs text-gray-400">
+                                Describe your design or refine existing ones
+                            </p>
+                        </div>
+                    ) : (
+                        <div className="space-y-4">
+                            {conversationHistory.map((message) => (
+                                <div
+                                    key={message.id}
+                                    className={`flex gap-3 ${
+                                        message.role === 'user' ? 'flex-row-reverse' : ''
+                                    }`}
+                                >
+                                    <Avatar className="h-8 w-8 flex-shrink-0">
+                                        <AvatarFallback className={message.role === 'user' ? 'bg-purple-100' : 'bg-blue-100'}>
+                                            {message.role === 'user' ? (
+                                                <User className="h-4 w-4 text-purple-600" />
+                                            ) : (
+                                                <Bot className="h-4 w-4 text-blue-600" />
+                                            )}
+                                        </AvatarFallback>
+                                    </Avatar>
+                                    <div className={`flex-1 ${message.role === 'user' ? 'items-end' : ''}`}>
+                                        <div
+                                            className={`rounded-2xl px-4 py-2.5 max-w-[85%] ${
+                                                message.role === 'user'
+                                                    ? 'bg-gradient-to-r from-purple-600 to-blue-600 text-white ml-auto'
+                                                    : 'bg-gray-100 text-gray-800'
+                                            }`}
+                                        >
+                                            <p className="text-sm leading-relaxed whitespace-pre-wrap">
+                                                {message.content}
+                                            </p>
+                                        </div>
+                                        <p className="text-[10px] text-gray-400 mt-1 px-2">
+                                            {new Date(message.timestamp).toLocaleTimeString([], { 
+                                                hour: '2-digit', 
+                                                minute: '2-digit' 
+                                            })}
+                                        </p>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </ScrollArea>
+
+                {/* Progress Indicator */}
+                {isGenerating && generationProgress && (
+                    <div className="px-4 pb-2">
+                        <GenerationProgressIndicator 
+                            progress={generationProgress}
                             isGenerating={isGenerating}
                         />
-
-                        {isGenerating && (
-                            <div className="mt-2 flex items-center gap-2 px-3 py-1.5 rounded-lg bg-purple-50/80 border border-purple-100">
-                                <div className="h-3 w-3 rounded-full border-2 border-purple-500 border-t-transparent animate-spin" />
-                                <span className="text-[11px] text-purple-600 font-medium">Generating model…</span>
-                            </div>
-                        )}
                     </div>
-                </ScrollArea>
+                )}
+
+                {/* Input Panel */}
+                <div className="border-t border-gray-100 p-3">
+                    <InputPanel
+                        onGenerateModel={handleGenerate}
+                        isGenerating={isGenerating}
+                        hasConversationHistory={conversationHistory.length > 0}
+                    />
+                </div>
             </div>
 
-            {/* ═══════ CENTER — Grid Canvas / Workspace ═══════ */}
+            {/* ═══════ CENTER — 3D/2D Viewer ═══════ */}
             <div className="flex-1 relative overflow-hidden">
                 {/* Grid background */}
                 <div
@@ -309,61 +565,121 @@ window.addEventListener('resize', () => {
                 {/* Canvas content */}
                 <div className="relative z-10 h-full flex flex-col">
                     {/* Toolbar strip */}
-                    <div className="flex items-center justify-between px-4 py-2 bg-white/80 backdrop-blur-sm border-b border-gray-200/60">
-                        <h1 className="text-base font-bold tracking-tight bg-gradient-to-r from-purple-600 via-violet-500 to-blue-600 bg-clip-text text-transparent">
-                            Workspace
-                        </h1>
+                    <div className="flex items-center justify-between px-4 py-2.5 bg-white/90 backdrop-blur-sm border-b border-gray-200/60">
+                        <div className="flex items-center gap-3">
+                            <h1 className="text-base font-bold tracking-tight bg-gradient-to-r from-purple-600 via-violet-500 to-blue-600 bg-clip-text text-transparent">
+                                Workspace
+                            </h1>
+                            {generatedModel && (
+                                <div className="flex items-center gap-2">
+                                    <ViewModeToggle mode={viewMode} onModeChange={setViewMode} />
+                                    {viewMode === '2d' && (
+                                        <ToggleGroup
+                                            type="single"
+                                            value={view2d}
+                                            onValueChange={(value) => value && setView2d(value as any)}
+                                            className="ml-2"
+                                        >
+                                            <ToggleGroupItem value="top" className="text-xs">Top</ToggleGroupItem>
+                                            <ToggleGroupItem value="front" className="text-xs">Front</ToggleGroupItem>
+                                            <ToggleGroupItem value="back" className="text-xs">Back</ToggleGroupItem>
+                                            <ToggleGroupItem value="left" className="text-xs">Left</ToggleGroupItem>
+                                            <ToggleGroupItem value="right" className="text-xs">Right</ToggleGroupItem>
+                                        </ToggleGroup>
+                                    )}
+                                </div>
+                            )}
+                        </div>
 
                         <div className="flex items-center gap-2">
-                            {/* Save as Project */}
                             {generatedModel && (
+                                <>
+                                    <Button
+                                        size="sm"
+                                        variant="outline"
+                                        className="h-8 text-xs gap-1.5 border-emerald-200 hover:bg-emerald-50"
+                                        onClick={() => setShowCostEstimator(!showCostEstimator)}
+                                    >
+                                        <DollarSign className="h-3.5 w-3.5" />
+                                        Cost
+                                    </Button>
+                                    <Button
+                                        size="sm"
+                                        variant="outline"
+                                        className="h-8 text-xs gap-1.5 border-blue-200 hover:bg-blue-50"
+                                        onClick={() => setShowComplianceChecker(!showComplianceChecker)}
+                                    >
+                                        <Shield className="h-3.5 w-3.5" />
+                                        Compliance
+                                    </Button>
+                                    <ARQRCode modelData={generatedModel} />
+                                    <ExportButton 
+                                        modelData={generatedModel}
+                                        projectName={prompt.slice(0, 30).replace(/\s+/g, '_') || 'cad-model'}
+                                        generatedCode={generatedCode}
+                                    />
+                                    <Button
+                                        size="sm"
+                                        className="h-8 text-xs gap-1.5 bg-gradient-to-r from-purple-600 to-blue-600 text-white"
+                                        onClick={handleSaveAsProject}
+                                    >
+                                        <FolderPlus className="h-3.5 w-3.5" />
+                                        {currentProjectId ? 'Update' : 'Save'}
+                                    </Button>
+                                </>
+                            )}
+                            {generatedCode && (
                                 <Button
+                                    variant={showCodePanel ? "secondary" : "outline"}
                                     size="sm"
-                                    className="h-7 text-xs gap-1.5 bg-gradient-to-r from-purple-600 to-blue-600 text-white shadow-md shadow-purple-500/20 hover:shadow-lg hover:shadow-purple-500/30 transition-all"
-                                    onClick={handleSaveAsProject}
+                                    className="h-8 text-xs gap-1.5"
+                                    onClick={() => setShowCodePanel(!showCodePanel)}
                                 >
-                                    <FolderPlus className="h-3.5 w-3.5" />
-                                    Save Project
+                                    <Code className="h-3.5 w-3.5" />
+                                    {showCodePanel ? 'Hide Code' : 'Show Code'}
                                 </Button>
                             )}
-
-                            {/* Toggle code panel */}
-                            <Button
-                                variant={showCodePanel ? "secondary" : "outline"}
-                                size="sm"
-                                className="h-7 text-xs gap-1.5 border-gray-200 hover:border-purple-300 hover:text-purple-600"
-                                onClick={() => setShowCodePanel(!showCodePanel)}
-                            >
-                                <Code className="h-3.5 w-3.5" />
-                                Code
-                            </Button>
                         </div>
                     </div>
 
-                    {/* Main canvas area — 3D Viewer or empty state */}
+                    {/* Main canvas area — 3D/2D Viewer or empty state */}
                     <div className="flex-1 relative">
                         {generatedModel ? (
                             <div className="absolute inset-0">
-                                <CadModelViewer
-                                    modelData={generatedModel}
-                                    settings={viewerSettings}
-                                />
+                                {viewMode === '3d' ? (
+                                    <CadModelViewer
+                                        modelData={generatedModel}
+                                        settings={viewerSettings}
+                                    />
+                                ) : (
+                                    <FloorPlan2D 
+                                        modelData={generatedModel}
+                                        showDimensions={true}
+                                        showGrid={true}
+                                        view={view2d}
+                                    />
+                                )}
                             </div>
                         ) : (
                             <div className="absolute inset-0 flex items-center justify-center">
-                                <div className="text-center max-w-sm">
-                                    <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-purple-100 to-blue-100 flex items-center justify-center mx-auto mb-5 shadow-inner">
+                                <div className="text-center max-w-md px-4">
+                                    <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-purple-100 to-blue-100 flex items-center justify-center mx-auto mb-5">
                                         <Wand2 className="h-8 w-8 text-purple-400" />
                                     </div>
-                                    <h3 className="text-lg font-semibold text-gray-600 mb-1.5">Your canvas is ready</h3>
-                                    <p className="text-sm text-gray-400 leading-relaxed">
-                                        Describe your building, upload a sketch, or use voice — then hit <strong className="text-purple-600">Generate</strong>.
+                                    <h3 className="text-xl font-semibold text-gray-700 mb-2">Ready to Design</h3>
+                                    <p className="text-sm text-gray-500 leading-relaxed mb-6">
+                                        Start chatting with the AI to create your architectural design. You can describe, sketch, or use voice input.
                                     </p>
-                                    <div className="mt-5 flex items-center justify-center gap-3 text-[10px] text-gray-400">
-                                        <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-purple-400" />Text</span>
-                                        <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-blue-400" />Sketch</span>
-                                        <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-violet-400" />Voice</span>
-                                        <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-pink-400" />Photo</span>
+                                    <div className="flex items-center justify-center gap-3 text-xs text-gray-400">
+                                        <span className="flex items-center gap-1.5 bg-purple-50 px-3 py-1.5 rounded-full">
+                                            <span className="w-2 h-2 rounded-full bg-purple-400" />Text
+                                        </span>
+                                        <span className="flex items-center gap-1.5 bg-blue-50 px-3 py-1.5 rounded-full">
+                                            <span className="w-2 h-2 rounded-full bg-blue-400" />Sketch
+                                        </span>
+                                        <span className="flex items-center gap-1.5 bg-violet-50 px-3 py-1.5 rounded-full">
+                                            <span className="w-2 h-2 rounded-full bg-violet-400" />Voice
+                                        </span>
                                     </div>
                                 </div>
                             </div>
@@ -372,26 +688,34 @@ window.addEventListener('resize', () => {
                 </div>
             </div>
 
-            {/* ═══════ RIGHT PANEL — Code Only ═══════ */}
-            {showCodePanel && (
-                <div className="w-[380px] min-w-[320px] flex flex-col border-l border-gray-200/80 bg-gray-950 z-10">
+            {/* ═══════ RIGHT PANEL — Code (Toggleable) ═══════ */}
+            {showCodePanel && generatedCode && (
+                <div className="w-[400px] min-w-[350px] flex flex-col border-l border-gray-200/80 bg-gray-950 z-10">
                     {/* Panel header */}
-                    <div className="flex items-center justify-between px-4 py-2.5 border-b border-gray-800">
+                    <div className="flex items-center justify-between px-4 py-3 border-b border-gray-800">
                         <div className="flex items-center gap-2">
                             <Code className="h-4 w-4 text-purple-400" />
-                            <span className="text-sm font-semibold text-gray-200">Generated Code</span>
+                            <span className="text-sm font-semibold text-gray-200">Three.js Code</span>
                         </div>
                         <div className="flex items-center gap-1.5">
-                            {generatedCode && (
-                                <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className="h-7 gap-1.5 text-xs text-gray-400 hover:text-white hover:bg-gray-800"
-                                    onClick={handleCopyCode}
-                                >
-                                    {copied ? <><Check className="h-3 w-3 text-green-400" /> Copied</> : <><Copy className="h-3 w-3" /> Copy</>}
-                                </Button>
-                            )}
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-7 gap-1.5 text-xs text-gray-400 hover:text-white hover:bg-gray-800"
+                                onClick={handleCopyCode}
+                            >
+                                {copied ? (
+                                    <>
+                                        <Check className="h-3 w-3 text-green-400" /> 
+                                        Copied
+                                    </>
+                                ) : (
+                                    <>
+                                        <Copy className="h-3 w-3" /> 
+                                        Copy
+                                    </>
+                                )}
+                            </Button>
                             <Button
                                 variant="ghost"
                                 size="sm"
@@ -404,25 +728,131 @@ window.addEventListener('resize', () => {
                     </div>
 
                     {/* Code content */}
-                    <div className="flex-1 overflow-hidden">
-                        {generatedCode ? (
-                            <ScrollArea className="h-full">
-                                <pre ref={codeRef} className="p-4 text-xs font-mono text-gray-300 leading-relaxed">
-                                    <code>{generatedCode}</code>
-                                </pre>
-                            </ScrollArea>
-                        ) : (
-                            <div className="h-full flex items-center justify-center">
-                                <div className="text-center p-6">
-                                    <Code className="h-10 w-10 text-gray-700 mx-auto mb-3" />
-                                    <p className="text-sm text-gray-500">Three.js code will appear here</p>
-                                    <p className="text-xs text-gray-600 mt-1">Generate a model to see the code</p>
-                                </div>
-                            </div>
-                        )}
-                    </div>
+                    <ScrollArea className="flex-1">
+                        <pre ref={codeRef} className="p-4 text-xs font-mono text-gray-300 leading-relaxed">
+                            <code>{generatedCode}</code>
+                        </pre>
+                    </ScrollArea>
                 </div>
             )}
+
+            {/* Cost Estimator Panel */}
+            {showCostEstimator && generatedModel && (
+                <>
+                    <div
+                        className="fixed inset-0 z-20"
+                        onClick={() => setShowCostEstimator(false)}
+                    />
+                    <div
+                        className="fixed right-0 top-16 h-[calc(100vh-4rem)] w-[26rem] max-w-[95vw] bg-white border-l border-gray-200 shadow-2xl flex flex-col z-30 pointer-events-auto overflow-hidden"
+                        onClick={(event) => event.stopPropagation()}
+                    >
+                        <div className="p-4 border-b border-gray-200 flex items-center justify-between bg-white sticky top-0 z-10">
+                            <h3 className="font-semibold text-gray-900">💰 Cost Estimate</h3>
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                className="hover:bg-gray-100 pointer-events-auto z-40"
+                                onMouseDown={(event) => {
+                                    event.preventDefault();
+                                    event.stopPropagation();
+                                    setShowCostEstimator(false);
+                                }}
+                                onClick={(event) => {
+                                    event.preventDefault();
+                                    event.stopPropagation();
+                                    setShowCostEstimator(false);
+                                }}
+                            >
+                                Close
+                            </Button>
+                        </div>
+                        <ScrollArea className="flex-1 p-4">
+                            <CostEstimator modelData={generatedModel} />
+                            <div className="pt-4">
+                                <Button
+                                    variant="outline"
+                                    className="w-full"
+                                    onClick={() => setShowCostEstimator(false)}
+                                >
+                                    Close
+                                </Button>
+                            </div>
+                        </ScrollArea>
+                    </div>
+                </>
+            )}
+
+            {/* Code Compliance Checker Panel */}
+            {showComplianceChecker && generatedModel && (
+                <>
+                    <div
+                        className="fixed inset-0 z-20"
+                        onClick={() => setShowComplianceChecker(false)}
+                    />
+                    <div
+                        className="fixed right-0 top-16 h-[calc(100vh-4rem)] w-[26rem] max-w-[95vw] bg-white border-l border-gray-200 shadow-2xl flex flex-col z-30 pointer-events-auto overflow-hidden"
+                        onClick={(event) => event.stopPropagation()}
+                    >
+                        <div className="p-4 border-b border-gray-200 flex items-center justify-between bg-white sticky top-0 z-10">
+                            <h3 className="font-semibold text-gray-900">🛡️ Code Compliance</h3>
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                className="hover:bg-gray-100 pointer-events-auto z-40"
+                                onMouseDown={(event) => {
+                                    event.preventDefault();
+                                    event.stopPropagation();
+                                    setShowComplianceChecker(false);
+                                }}
+                                onClick={(event) => {
+                                    event.preventDefault();
+                                    event.stopPropagation();
+                                    setShowComplianceChecker(false);
+                                }}
+                            >
+                                Close
+                            </Button>
+                        </div>
+                        <ScrollArea className="flex-1 p-4">
+                            <CodeComplianceChecker modelData={generatedModel} />
+                            <div className="pt-4">
+                                <Button
+                                    variant="outline"
+                                    className="w-full"
+                                    onClick={() => setShowComplianceChecker(false)}
+                                >
+                                    Close
+                                </Button>
+                            </div>
+                        </ScrollArea>
+                    </div>
+                </>
+            )}
+
+            {/* Code Panel */}
+            {showCodePanel && generatedModel && (
+                <div className="absolute right-0 top-0 h-screen w-96 bg-gray-900 border-l border-gray-800 flex flex-col z-30">
+                    <div className="p-3 border-b border-gray-800 flex items-center justify-between">
+                        <span className="text-sm font-medium text-gray-300">Generated Code</span>
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-gray-400 hover:text-gray-200"
+                            onClick={() => setShowCodePanel(false)}
+                        >
+                            <Shrink className="h-3.5 w-3.5" />
+                        </Button>
+                    </div>
+
+                    <ScrollArea className="flex-1">
+                        <pre ref={codeRef} className="p-4 text-xs font-mono text-gray-300 leading-relaxed">
+                            <code>{generatedCode}</code>
+                        </pre>
+                    </ScrollArea>
+                </div>
+            )}
+
         </div>
     );
 }
