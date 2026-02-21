@@ -931,17 +931,30 @@ export class MultimodalProcessor {
                 // Convert Blob to ArrayBuffer
                 const arrayBuffer = await audioBlob.arrayBuffer();
 
-                // Create an AudioConfig object using the array buffer
-                const pushStream =
-                    AudioConfig.fromWavFileOutput("audio-output.wav");
+                // Create a push stream and audio config
+                const pushStream = require("microsoft-cognitiveservices-speech-sdk").AudioInputStream.createPushStream();
+                const audioConfig = AudioConfig.fromStreamInput(pushStream);
 
                 // Create the SpeechRecognizer
                 const recognizer = new SpeechRecognizer(
                     this.speechConfig,
-                    pushStream
+                    audioConfig
                 );
 
-                // Process audio data
+                // Set up event handlers
+                recognizer.recognized = (s, e) => {
+                    if (e.result.text) {
+                        resolve(e.result.text);
+                        recognizer.close();
+                    }
+                };
+
+                recognizer.canceled = (s, e) => {
+                    recognizer.close();
+                    reject(new Error(`Speech recognition canceled: ${e.errorDetails}`));
+                };
+
+                // Start continuous recognition
                 recognizer.recognizeOnceAsync(
                     (result) => {
                         if (result.text) {
@@ -962,7 +975,7 @@ export class MultimodalProcessor {
                 );
 
                 // Push audio data to the stream
-                pushStream.write(new Uint8Array(arrayBuffer));
+                pushStream.write(arrayBuffer);
                 pushStream.close();
             } catch (error) {
                 reject(error);
