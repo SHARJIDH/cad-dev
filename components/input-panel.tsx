@@ -278,8 +278,18 @@ export function InputPanel({ onGenerateModel, isGenerating, hasConversationHisto
     const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (file) {
+            if (!file.type.startsWith("image/")) {
+                toast({
+                    title: "Invalid file type",
+                    description: "Please upload an image file (JPG, PNG, etc.)",
+                    variant: "destructive",
+                });
+                return;
+            }
             processImageFile(file);
         }
+        // Reset input value to allow uploading the same file again
+        e.target.value = '';
     };
 
     const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
@@ -306,18 +316,33 @@ export function InputPanel({ onGenerateModel, isGenerating, hasConversationHisto
     };
 
     const processImageFile = (file: File) => {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            if (e.target?.result) {
-                setPhotoData(e.target.result as string);
+        try {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                if (e.target?.result) {
+                    setPhotoData(e.target.result as string);
+                    toast({
+                        title: "Image loaded",
+                        description: "Your image has been loaded for analysis.",
+                    });
+                }
+            };
+            reader.onerror = () => {
                 toast({
-                    title: "Image loaded",
-                    description:
-                        "Your floor plan image has been loaded for analysis.",
+                    title: "Upload failed",
+                    description: "Failed to read the image file. Please try again.",
+                    variant: "destructive",
                 });
-            }
-        };
-        reader.readAsDataURL(file);
+            };
+            reader.readAsDataURL(file);
+        } catch (error) {
+            console.error("Error processing image:", error);
+            toast({
+                title: "Upload failed",
+                description: "An error occurred while processing the image.",
+                variant: "destructive",
+            });
+        }
     };
 
     // Sketch capture
@@ -564,24 +589,23 @@ export function InputPanel({ onGenerateModel, isGenerating, hasConversationHisto
                                     <Camera className="h-3 w-3 mr-1" />
                                     Camera
                                 </Button>
-                                <label htmlFor="floor-plan-upload" className="cursor-pointer">
-                                    <Button
-                                        variant="outline"
-                                        size="sm"
-                                        className="h-6 text-[10px] px-2"
-                                        type="button"
-                                    >
-                                        <Upload className="h-3 w-3 mr-1" />
-                                        Upload
-                                    </Button>
-                                    <input
-                                        id="floor-plan-upload"
-                                        type="file"
-                                        accept="image/*"
-                                        className="hidden"
-                                        onChange={handleFileUpload}
-                                    />
-                                </label>
+                                <Button
+                                    onClick={() => document.getElementById('floor-plan-upload')?.click()}
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-6 text-[10px] px-2"
+                                    type="button"
+                                >
+                                    <Upload className="h-3 w-3 mr-1" />
+                                    Upload
+                                </Button>
+                                <input
+                                    id="floor-plan-upload"
+                                    type="file"
+                                    accept="image/*"
+                                    className="hidden"
+                                    onChange={handleFileUpload}
+                                />
                             </>
                         )}
                         {isCameraActive && (
