@@ -22,13 +22,9 @@ export async function generateCadModel(
       - Speech data: ${speechData ? "provided" : "none"}
       - Photo data: ${photoData ? "provided" : "none"}`);
 
-        // If we have multiple input modalities, use the multimodal processor
-        if (
-            (sketchData && speechData) ||
-            (sketchData && photoData) ||
-            (speechData && photoData)
-        ) {
-            console.log("Using multimodal processor for multiple input types");
+        // If we have any non-text input modalities, use the multimodal processor
+        if (sketchData || speechData || photoData) {
+            console.log("Using multimodal processor for input processing");
 
             // Process multiple input modalities
             const processorResult =
