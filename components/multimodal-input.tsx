@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { DesignCanvas } from "@/components/design-canvas";
 import { toast } from "@/components/ui/use-toast";
+import { convertToWav } from "@/lib/audio-utils";
 
 interface MultimodalInputProps {
     onGenerateModel: (inputs: {
@@ -84,9 +85,23 @@ export function MultimodalInput({
     const startRecording = async () => {
         try {
             const stream = await navigator.mediaDevices.getUserMedia({
-                audio: true,
+                audio: {
+                    channelCount: 1, // Mono audio
+                    sampleRate: 16000, // 16kHz for Azure Speech
+                    echoCancellation: true,
+                    noiseSuppression: true,
+                },
             });
-            const mediaRecorder = new MediaRecorder(stream);
+            
+            // Try to use WAV format, fallback to webm
+            let options = { mimeType: 'audio/webm' };
+            if (MediaRecorder.isTypeSupported('audio/wav')) {
+                options = { mimeType: 'audio/wav' };
+            } else if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
+                options = { mimeType: 'audio/webm;codecs=opus' };
+            }
+            
+            const mediaRecorder = new MediaRecorder(stream, options);
             mediaRecorderRef.current = mediaRecorder;
             audioChunksRef.current = [];
 
@@ -96,7 +111,7 @@ export function MultimodalInput({
 
             mediaRecorder.onstop = async () => {
                 const audioBlob = new Blob(audioChunksRef.current, {
-                    type: "audio/wav",
+                    type: mediaRecorder.mimeType,
                 });
                 await processAudioRecording(audioBlob);
                 stream.getTracks().forEach((track) => track.stop());
@@ -142,14 +157,17 @@ export function MultimodalInput({
 
     const processAudioRecording = async (audioBlob: Blob) => {
         try {
-            // Prepare form data
-            const formData = new FormData();
-            formData.append("audio", audioBlob);
+            // Convert to WAV format for Azure Speech Service
+            const wavBlob = await convertToWav(audioBlob);
+            console.log(`Converted audio: ${audioBlob.size} bytes -> ${wavBlob.size} bytes (WAV)`);
 
             // Call speech-to-text API
             const response = await fetch("/api/speech-to-text", {
                 method: "POST",
-                body: formData,
+                body: wavBlob,
+                headers: {
+                    'Content-Type': 'audio/wav',
+                },
             });
 
             if (!response.ok) {

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
     Copy,
@@ -17,6 +17,7 @@ import {
     Users,
     DollarSign,
     X,
+    Sofa,
 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
@@ -42,7 +43,7 @@ import { Bot, User, Eye, Shield, Smartphone } from "lucide-react";
 import { CostEstimator } from '@/components/cost-estimator';
 import { CodeComplianceChecker } from '@/components/code-compliance-checker';
 import { ARQRCode } from '@/components/ar-qr-code';
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useProject } from "@/hooks/use-project";
 import { CreateProjectDialog } from "@/components/create-project-dialog";
 import { InviteMemberDialog } from "@/components/invite-member-dialog";
@@ -50,6 +51,7 @@ import { Project } from "@/types/database";
 
 export default function CadGeneratorPage() {
     const searchParams = useSearchParams();
+    const router = useRouter();
 
     const [prompt, setPrompt] = useState("");
     const [isGenerating, setIsGenerating] = useState(false);
@@ -334,6 +336,18 @@ export default function CadGeneratorPage() {
         }
     };
 
+    const handleOpenInteriorDesigner = () => {
+        if (!generatedModel) {
+            toast.error("Generate a model first before designing interiors!");
+            return;
+        }
+        
+        // Save model to localStorage for Interior Designer
+        localStorage.setItem('currentModel', JSON.stringify(generatedModel));
+        toast.success("Opening Interior Designer...");
+        router.push('/interior-designer');
+    };
+
     const handleCopyCode = () => {
         navigator.clipboard.writeText(generatedCode);
         setCopied(true);
@@ -574,18 +588,18 @@ window.addEventListener('resize', () => {
                                 <div className="flex items-center gap-2">
                                     <ViewModeToggle mode={viewMode} onModeChange={setViewMode} />
                                     {viewMode === '2d' && (
-                                        <ToggleGroup
-                                            type="single"
-                                            value={view2d}
-                                            onValueChange={(value) => value && setView2d(value as any)}
-                                            className="ml-2"
-                                        >
-                                            <ToggleGroupItem value="top" className="text-xs">Top</ToggleGroupItem>
-                                            <ToggleGroupItem value="front" className="text-xs">Front</ToggleGroupItem>
-                                            <ToggleGroupItem value="back" className="text-xs">Back</ToggleGroupItem>
-                                            <ToggleGroupItem value="left" className="text-xs">Left</ToggleGroupItem>
-                                            <ToggleGroupItem value="right" className="text-xs">Right</ToggleGroupItem>
-                                        </ToggleGroup>
+                                        <Select value={view2d} onValueChange={(value) => setView2d(value as any)}>
+                                            <SelectTrigger className="ml-2 w-[120px] text-xs">
+                                                <SelectValue placeholder="Select view" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="top">Top</SelectItem>
+                                                <SelectItem value="front">Front</SelectItem>
+                                                <SelectItem value="back">Back</SelectItem>
+                                                <SelectItem value="left">Left</SelectItem>
+                                                <SelectItem value="right">Right</SelectItem>
+                                            </SelectContent>
+                                        </Select>
                                     )}
                                 </div>
                             )}
@@ -611,6 +625,15 @@ window.addEventListener('resize', () => {
                                     >
                                         <Shield className="h-3.5 w-3.5" />
                                         Compliance
+                                    </Button>
+                                    <Button
+                                        size="sm"
+                                        variant="outline"
+                                        className="h-8 text-xs gap-1.5 border-violet-200 hover:bg-violet-50"
+                                        onClick={handleOpenInteriorDesigner}
+                                    >
+                                        <Sofa className="h-3.5 w-3.5" />
+                                        Interior Design
                                     </Button>
                                     <ARQRCode modelData={generatedModel} />
                                     <ExportButton 

@@ -928,12 +928,27 @@ export class MultimodalProcessor {
 
         return new Promise<string>(async (resolve, reject) => {
             try {
+                const sdk = require("microsoft-cognitiveservices-speech-sdk");
+                
                 // Convert Blob to ArrayBuffer
                 const arrayBuffer = await audioBlob.arrayBuffer();
-
-                // Create a push stream and audio config
-                const pushStream = require("microsoft-cognitiveservices-speech-sdk").AudioInputStream.createPushStream();
-                const audioConfig = AudioConfig.fromStreamInput(pushStream);
+                console.log(`Processing audio blob of size: ${arrayBuffer.byteLength} bytes, type: ${audioBlob.type}`);
+                
+                // Check if it's a WAV file by checking for RIFF header
+                const view = new DataView(arrayBuffer);
+                const isWav = arrayBuffer.byteLength > 44 && 
+                    String.fromCharCode(view.getUint8(0), view.getUint8(1), view.getUint8(2), view.getUint8(3)) === 'RIFF';
+                
+                console.log(`Audio format detected: ${isWav ? 'WAV with RIFF header' : 'Unknown'}`);
+                
+                // For WAV files, we can skip the 44-byte header and send raw PCM data to push stream
+                // Or use the entire buffer if Azure can handle it
+                const audioData = isWav ? arrayBuffer.slice(44) : arrayBuffer;
+                
+                // Create audio format: 16kHz, 16-bit, mono PCM
+                const audioFormat = sdk.AudioStreamFormat.getWaveFormatPCM(16000, 16, 1);
+                const pushStream = sdk.AudioInputStream.createPushStream(audioFormat);
+                const audioConfig = sdk.AudioConfig.fromStreamInput(pushStream);
 
                 // Create the SpeechRecognizer
                 const recognizer = new SpeechRecognizer(
@@ -943,39 +958,48 @@ export class MultimodalProcessor {
 
                 // Set up event handlers
                 recognizer.recognized = (s, e) => {
-                    if (e.result.text) {
-                        resolve(e.result.text);
-                        recognizer.close();
-                    }
+                    console.log(`Speech recognized event: ${e.result.text}`);
                 };
 
                 recognizer.canceled = (s, e) => {
+                    console.error(`Speech recognition canceled: ${e.errorDetails}`);
                     recognizer.close();
                     reject(new Error(`Speech recognition canceled: ${e.errorDetails}`));
                 };
 
-                // Start continuous recognition
+                // Start recognition
                 recognizer.recognizeOnceAsync(
                     (result) => {
-                        if (result.text) {
+                        console.log(`Recognition result - Reason: ${result.reason}, Text: "${result.text}"`);
+                        
+                        if (result.reason === sdk.ResultReason.RecognizedSpeech && result.text) {
+                            recognizer.close();
                             resolve(result.text);
-                        } else {
+                        } else if (result.reason === sdk.ResultReason.NoMatch) {
+                            recognizer.close();
                             reject(
                                 new Error(
-                                    "No text was recognized from the audio"
+                                    "No speech was detected. Please speak clearly and ensure your microphone is working."
+                                )
+                            );
+                        } else {
+                            recognizer.close();
+                            reject(
+                                new Error(
+                                    `Speech recognition failed. Reason: ${result.reason}`
                                 )
                             );
                         }
-                        recognizer.close();
                     },
                     (error) => {
+                        console.error(`Recognition error: ${error}`);
                         recognizer.close();
                         reject(error);
                     }
                 );
 
-                // Push audio data to the stream
-                pushStream.write(arrayBuffer);
+                // Push audio data to the stream (without WAV header for push stream)
+                pushStream.write(audioData);
                 pushStream.close();
             } catch (error) {
                 reject(error);

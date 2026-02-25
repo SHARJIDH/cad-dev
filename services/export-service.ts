@@ -297,6 +297,141 @@ export class ModelExporter {
         backGable.castShadow = true;
         scene.add(backGable);
 
+        // Add chimney on the roof
+        const chimneyWidth = 0.6;
+        const chimneyHeight = roofHeight * 0.7;
+        const chimneyGeometry = new THREE.BoxGeometry(chimneyWidth, chimneyHeight, chimneyWidth);
+        const chimneyMaterial = new THREE.MeshStandardMaterial({
+            map: brickTexture.clone(),
+            roughness: 0.9,
+            metalness: 0.0
+        });
+        const chimney = new THREE.Mesh(chimneyGeometry, chimneyMaterial);
+        chimney.position.set(
+            buildingCenterX + buildingWidth * 0.3,
+            maxY + roofHeight + chimneyHeight / 2 - 0.3,
+            buildingCenterZ
+        );
+        chimney.castShadow = true;
+        scene.add(chimney);
+
+        // Chimney cap
+        const capGeometry = new THREE.BoxGeometry(chimneyWidth + 0.15, 0.15, chimneyWidth + 0.15);
+        const capMaterial = new THREE.MeshStandardMaterial({ color: 0x444444, roughness: 0.5 });
+        const cap = new THREE.Mesh(capGeometry, capMaterial);
+        cap.position.set(
+            buildingCenterX + buildingWidth * 0.3,
+            maxY + roofHeight + chimneyHeight,
+            buildingCenterZ
+        );
+        scene.add(cap);
+
+        // Add foundation/basement
+        const foundationHeight = 0.4;
+        const foundationGeometry = new THREE.BoxGeometry(buildingWidth + 0.4, foundationHeight, buildingLength + 0.4);
+        const foundationMaterial = new THREE.MeshStandardMaterial({
+            color: 0x5a5a5a,
+            roughness: 0.95,
+            metalness: 0.0
+        });
+        const foundation = new THREE.Mesh(foundationGeometry, foundationMaterial);
+        foundation.position.set(buildingCenterX, -foundationHeight / 2, buildingCenterZ);
+        foundation.receiveShadow = true;
+        scene.add(foundation);
+
+        // Add front porch/entrance
+        const porchWidth = Math.min(buildingWidth * 0.4, 3);
+        const porchDepth = 1.5;
+        const porchHeight = 0.15;
+        
+        // Porch floor
+        const porchFloorGeometry = new THREE.BoxGeometry(porchWidth, porchHeight, porchDepth);
+        const porchFloorMaterial = new THREE.MeshStandardMaterial({
+            map: woodTexture.clone(),
+            roughness: 0.8,
+            metalness: 0.0
+        });
+        const porchFloor = new THREE.Mesh(porchFloorGeometry, porchFloorMaterial);
+        porchFloor.position.set(buildingCenterX, 0.3, minZ - porchDepth / 2);
+        porchFloor.castShadow = true;
+        porchFloor.receiveShadow = true;
+        scene.add(porchFloor);
+
+        // Porch columns
+        const columnRadius = 0.12;
+        const columnHeight = 2.5;
+        const columnGeometry = new THREE.CylinderGeometry(columnRadius, columnRadius, columnHeight, 12);
+        const columnMaterial = new THREE.MeshStandardMaterial({
+            color: 0xffffff,
+            roughness: 0.6,
+            metalness: 0.2
+        });
+        
+        const leftColumn = new THREE.Mesh(columnGeometry, columnMaterial);
+        leftColumn.position.set(buildingCenterX - porchWidth / 2 + 0.3, columnHeight / 2 + 0.3, minZ - porchDepth + 0.3);
+        leftColumn.castShadow = true;
+        scene.add(leftColumn);
+        
+        const rightColumn = new THREE.Mesh(columnGeometry, columnMaterial.clone());
+        rightColumn.position.set(buildingCenterX + porchWidth / 2 - 0.3, columnHeight / 2 + 0.3, minZ - porchDepth + 0.3);
+        rightColumn.castShadow = true;
+        scene.add(rightColumn);
+
+        // Entrance steps
+        const stepWidth = porchWidth;
+        const stepDepth = 0.35;
+        const stepHeight = 0.15;
+        const numSteps = 3;
+        
+        for (let i = 0; i < numSteps; i++) {
+            const stepGeometry = new THREE.BoxGeometry(stepWidth, stepHeight, stepDepth);
+            const stepMaterial = new THREE.MeshStandardMaterial({
+                color: 0x808080,
+                roughness: 0.9,
+                metalness: 0.0
+            });
+            const step = new THREE.Mesh(stepGeometry, stepMaterial);
+            step.position.set(
+                buildingCenterX,
+                stepHeight / 2 + i * stepHeight,
+                minZ - porchDepth - stepDepth / 2 - i * stepDepth
+            );
+            step.castShadow = true;
+            step.receiveShadow = true;
+            scene.add(step);
+        }
+
+        // Add landscaping - grass base
+        const grassRadius = Math.max(buildingWidth, buildingLength) * 1.5;
+        const grassGeometry = new THREE.CircleGeometry(grassRadius, 64);
+        const grassMaterial = new THREE.MeshStandardMaterial({
+            color: 0x2d5016,
+            roughness: 1.0,
+            metalness: 0.0
+        });
+        const grass = new THREE.Mesh(grassGeometry, grassMaterial);
+        grass.rotation.x = -Math.PI / 2;
+        grass.position.set(buildingCenterX, -foundationHeight - 0.01, buildingCenterZ);
+        grass.receiveShadow = true;
+        scene.add(grass);
+
+        // Add decorative bushes
+        const bushGeometry = new THREE.SphereGeometry(0.5, 12, 12);
+        const bushMaterial = new THREE.MeshStandardMaterial({
+            color: 0x228b22,
+            roughness: 0.95,
+            metalness: 0.0
+        });
+        
+        // Bushes along front
+        for (let i = 0; i < 4; i++) {
+            const bush = new THREE.Mesh(bushGeometry, bushMaterial.clone());
+            const xPos = buildingCenterX - buildingWidth / 2 + (buildingWidth / 3) * i;
+            bush.position.set(xPos, 0.3, minZ - 0.5);
+            bush.castShadow = true;
+            scene.add(bush);
+        }
+
         // Add realistic windows with frames
         if (modelData.windows && modelData.windows.length > 0) {
             modelData.windows.forEach((window: any) => {
@@ -345,6 +480,17 @@ export class ModelExporter {
                 bottomFrame.position.set(0, -(window.height || 1.5) / 2, frameThickness / 2);
                 
                 windowGroup.add(leftFrame, rightFrame, topFrame, bottomFrame);
+                
+                // Add window sill
+                const sillGeometry = new THREE.BoxGeometry((window.width || 1.2) + 0.2, 0.05, 0.15);
+                const sillMaterial = new THREE.MeshStandardMaterial({
+                    color: 0xffffff,
+                    roughness: 0.5,
+                    metalness: 0.2
+                });
+                const sill = new THREE.Mesh(sillGeometry, sillMaterial);
+                sill.position.set(0, -(window.height || 1.5) / 2 - 0.05, 0.08);
+                windowGroup.add(sill);
                 
                 // Position on wall
                 windowGroup.position.set(
