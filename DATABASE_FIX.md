@@ -15,12 +15,7 @@ This happens because the PostgreSQL connection pool is being exhausted or connec
 Add connection pooling parameters to your DATABASE_URL:
 
 ```bash
-# BEFORE (your current setup):
-DATABASE_URL="postgresql://postgres.jlcovaobgcjixfdbhyss:Cad20003-proj@aws-1-ap-south-1.pooler.supabase.com:5432/postgres"
 
-# AFTER (add pgbouncer parameters):
-DATABASE_URL="postgresql://postgres.jlcovaobgcjixfdbhyss:Cad20003-proj@aws-1-ap-south-1.pooler.supabase.com:5432/postgres?pgbouncer=true&connection_limit=1"
-DIRECT_URL="postgresql://postgres.jlcovaobgcjixfdbhyss:Cad20003-proj@aws-1-ap-south-1.pooler.supabase.com:5432/postgres"
 ```
 
 **Important parameters:**
