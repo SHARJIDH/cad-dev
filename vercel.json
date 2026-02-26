@@ -1,8 +1,12 @@
 {
-  "buildCommand": "npm install --legacy-peer-deps && npm run build",
+  "buildCommand": "npm install --legacy-peer-deps && npx prisma generate && npm run build",
+  "installCommand": "npm install --legacy-peer-deps",
   "functions": {
-    "pages/api/**/*.{js,ts}": {
+    "app/api/**/*.{js,ts}": {
       "maxDuration": 60
     }
+  },
+  "env": {
+    "SKIP_ENV_VALIDATION": "1"
   }
 }
