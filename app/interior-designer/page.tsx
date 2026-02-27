@@ -6,6 +6,7 @@ import { Card } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
 import { Loader2, Sparkles, Home, Sofa, DollarSign, Palette,  ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
@@ -37,6 +38,34 @@ export default function InteriorDesignerPage() {
     const [isGenerating, setIsGenerating] = useState(false);
     const [designStyles, setDesignStyles] = useState<DesignStyle[]>([]);
     const [selectedStyle, setSelectedStyle] = useState<DesignStyle | null>(null);
+    
+    // Fresh interior design mode (when accessing from navbar, no model)
+    const [freshDesignRoomType, setFreshDesignRoomType] = useState<string>('living-room');
+    const [freshDesignWidth, setFreshDesignWidth] = useState<string>('5');
+    const [freshDesignLength, setFreshDesignLength] = useState<string>('6');
+    const [freshDesignPrompt, setFreshDesignPrompt] = useState<string>('');
+
+    // Room type options for dropdown
+    const roomTypeOptions = [
+        { value: 'living-room', label: 'Living Room' },
+        { value: 'bedroom', label: 'Bedroom' },
+        { value: 'kitchen', label: 'Kitchen' },
+        { value: 'dining-room', label: 'Dining Room' },
+        { value: 'office', label: 'Office' },
+        { value: 'bathroom', label: 'Bathroom' },
+    ];
+
+    // Map room names to design purposes (for project-based flow)
+    const roomPurposeMap: { [key: string]: string } = {
+        'living room': 'living-room',
+        'bedroom': 'bedroom',
+        'kitchen': 'kitchen',
+        'dining': 'dining-room',
+        'dining room': 'dining-room',
+        'office': 'office',
+        'bathroom': 'bathroom',
+        'bed room': 'bedroom',
+    };
 
     useEffect(() => {
         // Load model from persistent state
@@ -44,22 +73,69 @@ export default function InteriorDesignerPage() {
             setModelData(model);
             if (model.rooms && model.rooms.length > 0) {
                 setSelectedRoom(model.rooms[0].name);
+                // Auto-detect room type from room name
+                const detectedType = detectRoomType(model.rooms[0].name);
+                setRoomType(detectedType);
             }
         }
     }, [model]);
 
+    // Auto-detect room type from room name
+    const detectRoomType = (roomName: string): string => {
+        const lowerName = roomName.toLowerCase();
+        for (const [key, value] of Object.entries(roomPurposeMap)) {
+            if (lowerName.includes(key)) {
+                return value;
+            }
+        }
+        return 'living-room'; // default
+    };
+
+    // Update room type when room selection changes
+    const handleRoomChange = (room: string) => {
+        setSelectedRoom(room);
+        const detectedType = detectRoomType(room);
+        setRoomType(detectedType);
+    };
+
     const generateInteriorDesign = async () => {
-        if (!selectedRoom) return;
+        // For fresh design (no model): need room type, width, length
+        // For model-based design: need selected room
+        if (!modelData && !freshDesignRoomType) return;
+        if (modelData && !selectedRoom) return;
         
         setIsGenerating(true);
         try {
+            let roomData;
+            let roomName;
+            let rType;
+            let userPrompt = '';
+            
+            if (!modelData) {
+                // Fresh interior design mode (navbar entry)
+                roomName = `${roomTypeOptions.find(r => r.value === freshDesignRoomType)?.label || 'Room'}`;
+                rType = freshDesignRoomType;
+                userPrompt = freshDesignPrompt; // Optional user prompt
+                roomData = {
+                    name: roomName,
+                    width: parseFloat(freshDesignWidth) || 5,
+                    length: parseFloat(freshDesignLength) || 6,
+                };
+            } else {
+                // Project-based mode
+                roomName = selectedRoom;
+                rType = roomType;
+                roomData = modelData.rooms.find((r: any) => r.name === selectedRoom);
+            }
+            
             const response = await fetch('/api/interior-design', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    roomName: selectedRoom,
-                    roomType,
-                    dimensions: modelData.rooms.find((r: any) => r.name === selectedRoom),
+                    roomName,
+                    roomType: rType,
+                    dimensions: roomData,
+                    userPrompt: userPrompt || undefined, // Include prompt if provided
                 }),
             });
 
@@ -78,23 +154,17 @@ export default function InteriorDesignerPage() {
     return (
         <div className="min-h-screen bg-gradient-to-br from-orange-50 to-amber-50 dark:from-dark-bg dark:to-dark-surface">
             {/* Header */}
-            <div className="bg-white dark:bg-dark-surface border-b border-gray-200 dark:border-dark-border p-4 shadow-sm">
-                <div className="max-w-7xl mx-auto flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                        <Link href="/cad-generator">
-                            <Button variant="ghost" size="sm">
-                                <ArrowLeft className="h-4 w-4 mr-2" />
-                                Back
-                            </Button>
-                        </Link>
-                        <div>
-                            <h1 className="text-2xl font-bold bg-gradient-to-r from-orange-600 to-amber-600 bg-clip-text text-transparent flex items-center gap-2">
-                                <Sparkles className="h-6 w-6 text-orange-600 dark:text-orange-400" />
-                                AI Interior Designer
-                            </h1>
-                            <p className="text-sm text-gray-600 dark:text-gray-400">Transform your rooms with AI-powered design suggestions</p>
-                        </div>
-                    </div>
+            <div className="bg-white dark:bg-dark-surface border-b border-gray-200 dark:border-dark-border px-6 py-2 shadow-sm">
+                <div className="max-w-7xl mx-auto flex items-center gap-3">
+                    <Link href="/cad-generator">
+                        <Button variant="ghost" size="sm" className="p-0 h-auto">
+                            <ArrowLeft className="h-4 w-4" />
+                        </Button>
+                    </Link>
+                    <h1 className="text-xl font-bold bg-gradient-to-r from-orange-600 to-amber-600 bg-clip-text text-transparent flex items-center gap-2">
+                        <Sparkles className="h-5 w-5 text-orange-600 dark:text-orange-400" />
+                        AI Interior Designer
+                    </h1>
                 </div>
             </div>
 
@@ -110,7 +180,7 @@ export default function InteriorDesignerPage() {
                                 {/* Room Selection */}
                                 <div>
                                     <label className="text-sm font-medium mb-2 block">Select Room</label>
-                                    <Select value={selectedRoom} onValueChange={setSelectedRoom}>
+                                    <Select value={selectedRoom} onValueChange={handleRoomChange}>
                                         <SelectTrigger>
                                             <SelectValue placeholder="Choose a room" />
                                         </SelectTrigger>
@@ -124,44 +194,39 @@ export default function InteriorDesignerPage() {
                                     </Select>
                                 </div>
 
-                                {/* Room Type */}
-                                <div>
-                                    <label className="text-sm font-medium mb-2 block">Room Purpose</label>
-                                    <Select value={roomType} onValueChange={setRoomType}>
-                                        <SelectTrigger>
-                                            <SelectValue />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="living-room">Living Room</SelectItem>
-                                            <SelectItem value="bedroom">Bedroom</SelectItem>
-                                            <SelectItem value="kitchen">Kitchen</SelectItem>
-                                            <SelectItem value="dining-room">Dining Room</SelectItem>
-                                            <SelectItem value="office">Home Office</SelectItem>
-                                            <SelectItem value="bathroom">Bathroom</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
+                                {/* Detected Room Type Badge */}
+                                {selectedRoom && (
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-sm text-gray-600">Room Type:</span>
+                                        <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200">
+                                            {roomType.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}
+                                        </Badge>
+                                    </div>
+                                )}
 
                                 {/* Room Info */}
                                 {selectedRoom && modelData.rooms.find((r: any) => r.name === selectedRoom) && (
-                                    <div className="bg-orange-50 dark:bg-orange-500/10 rounded-lg p-4 space-y-2">
-                                        <h3 className="font-medium text-sm dark:text-white">Room Dimensions</h3>
-                                        <div className="grid grid-cols-2 gap-2 text-sm">
+                                    <div className="bg-orange-50 dark:bg-orange-500/10 rounded-lg p-4 space-y-2 border border-orange-100 dark:border-orange-500/20">
+                                        <h3 className="font-medium text-sm dark:text-white flex items-center gap-2">
+                                            <Home className="h-4 w-4" />
+                                            Room Dimensions (from your 3D model)
+                                        </h3>
+                                        <div className="grid grid-cols-2 gap-3 text-sm">
                                             <div>
-                                                <span className="text-gray-600">Width:</span>
-                                                <span className="font-semibold ml-2">
+                                                <span className="text-gray-600 dark:text-gray-400">Width:</span>
+                                                <span className="font-semibold ml-2 dark:text-white">
                                                     {modelData.rooms.find((r: any) => r.name === selectedRoom).width}m
                                                 </span>
                                             </div>
                                             <div>
-                                                <span className="text-gray-600">Length:</span>
-                                                <span className="font-semibold ml-2">
+                                                <span className="text-gray-600 dark:text-gray-400">Length:</span>
+                                                <span className="font-semibold ml-2 dark:text-white">
                                                     {modelData.rooms.find((r: any) => r.name === selectedRoom).length}m
                                                 </span>
                                             </div>
-                                            <div className="col-span-2">
-                                                <span className="text-gray-600">Area:</span>
-                                                <span className="font-semibold ml-2">
+                                            <div className="col-span-2 border-t border-orange-200 dark:border-orange-500/30 pt-2">
+                                                <span className="text-gray-600 dark:text-gray-400">Total Area:</span>
+                                                <span className="font-semibold ml-2 text-orange-600 dark:text-orange-400">
                                                     {(modelData.rooms.find((r: any) => r.name === selectedRoom).width * 
                                                       modelData.rooms.find((r: any) => r.name === selectedRoom).length).toFixed(1)}m²
                                                 </span>
@@ -190,14 +255,129 @@ export default function InteriorDesignerPage() {
                                 </Button>
                             </div>
                         ) : (
-                            <div className="text-center py-8">
-                                <Home className="h-12 w-12 mx-auto text-gray-400 mb-2" />
-                                <p className="text-gray-600">No model data found</p>
-                                <Link href="/cad-generator">
-                                    <Button variant="link" className="mt-2">
-                                        Create a design first
-                                    </Button>
-                                </Link>
+                            <div className="space-y-4">
+                                <div className="text-center py-4 mb-4 bg-orange-50 dark:bg-orange-500/10 rounded-lg p-4 border border-orange-200 dark:border-orange-500/20">
+                                    <h3 className="font-semibold text-gray-800 dark:text-gray-200 mb-1">Design Setup</h3>
+                                    <p className="text-sm text-gray-700 dark:text-gray-300">Create a new interior design from scratch</p>
+                                </div>
+                                
+                                {/* Room Type Dropdown */}
+                                <div>
+                                    <label className="text-sm font-medium mb-2 block">Room Type<span className="text-red-500 ml-1">*</span></label>
+                                    <Select value={freshDesignRoomType} onValueChange={setFreshDesignRoomType}>
+                                        <SelectTrigger className="dark:bg-dark-input dark:border-dark-border">
+                                            <SelectValue placeholder="Select room type" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {roomTypeOptions.map(option => (
+                                                <SelectItem key={option.value} value={option.value}>
+                                                    {option.label}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+
+                                {/* Dimensions */}
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div>
+                                        <label className="text-sm font-medium mb-2 block">Width (m)<span className="text-red-500 ml-1">*</span></label>
+                                        <Input 
+                                            type="number"
+                                            placeholder="5"
+                                            value={freshDesignWidth}
+                                            onChange={(e) => setFreshDesignWidth(e.target.value)}
+                                            className="dark:bg-dark-input dark:border-dark-border"
+                                            step="0.5"
+                                            min="1"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="text-sm font-medium mb-2 block">Length (m)<span className="text-red-500 ml-1">*</span></label>
+                                        <Input 
+                                            type="number"
+                                            placeholder="6"
+                                            value={freshDesignLength}
+                                            onChange={(e) => setFreshDesignLength(e.target.value)}
+                                            className="dark:bg-dark-input dark:border-dark-border"
+                                            step="0.5"
+                                            min="1"
+                                        />
+                                    </div>
+                                </div>
+
+                                {/* Optional Text Prompt */}
+                                <div>
+                                    <label className="text-sm font-medium mb-2 block">Design Prompt<span className="text-gray-500 ml-2 text-xs">(Optional)</span></label>
+                                    <Input 
+                                        type="text"
+                                        placeholder="e.g., Modern style with warm lighting, Minimalist aesthetic, Cozy rustic theme"
+                                        value={freshDesignPrompt}
+                                        onChange={(e) => setFreshDesignPrompt(e.target.value)}
+                                        className="dark:bg-dark-input dark:border-dark-border"
+                                    />
+                                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Describe the style, mood, or specific preferences for your design</p>
+                                </div>
+
+                                {/* Room Summary */}
+                                {freshDesignRoomType && freshDesignWidth && freshDesignLength && (
+                                    <div className="bg-orange-50 dark:bg-orange-500/10 rounded-lg p-4 space-y-2 border border-orange-100 dark:border-orange-500/20">
+                                        <h3 className="font-medium text-sm dark:text-white flex items-center gap-2">
+                                            <Home className="h-4 w-4" />
+                                            Room Summary
+                                        </h3>
+                                        <div className="grid grid-cols-2 gap-3 text-sm">
+                                            <div>
+                                                <span className="text-gray-600 dark:text-gray-400">Type:</span>
+                                                <span className="font-semibold ml-2">
+                                                    <Badge variant="outline" className="bg-orange-50 dark:bg-orange-500/20 text-orange-700 dark:text-orange-400 border-orange-200 dark:border-orange-500/30">
+                                                        {roomTypeOptions.find(r => r.value === freshDesignRoomType)?.label}
+                                                    </Badge>
+                                                </span>
+                                            </div>
+                                            <div>
+                                                <span className="text-gray-600 dark:text-gray-400">Area:</span>
+                                                <span className="font-semibold ml-2 text-orange-600 dark:text-orange-400">
+                                                    {(parseFloat(freshDesignWidth) * parseFloat(freshDesignLength)).toFixed(1)}m²
+                                                </span>
+                                            </div>
+                                            {freshDesignPrompt && (
+                                                <div className="col-span-2 border-t border-orange-200 dark:border-orange-500/30 pt-2">
+                                                    <span className="text-gray-600 dark:text-gray-400">Style:</span>
+                                                    <p className="text-sm text-gray-700 dark:text-gray-300 mt-1">{freshDesignPrompt}</p>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Generate Button */}
+                                <Button 
+                                    onClick={generateInteriorDesign}
+                                    disabled={isGenerating || !freshDesignRoomType || !freshDesignWidth || !freshDesignLength}
+                                    className="w-full bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white"
+                                >
+                                    {isGenerating ? (
+                                        <>
+                                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                            Generating Designs...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Sparkles className="h-4 w-4 mr-2" />
+                                            Generate AI Designs
+                                        </>
+                                    )}
+                                </Button>
+
+                                <div className="text-center text-xs text-gray-500 dark:text-gray-400 mt-4 pt-4 border-t border-gray-200 dark:border-dark-border">
+                                    Or{' '}
+                                    <Link href="/cad-generator">
+                                        <Button variant="link" className="p-0 h-auto text-xs">
+                                            create a CAD model first
+                                        </Button>
+                                    </Link>
+                                </div>
                             </div>
                         )}
                     </Card>

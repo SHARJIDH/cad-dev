@@ -70,7 +70,7 @@ export default function InviteAcceptPage() {
             </div>
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Project Invitation</h1>
             <p className="text-gray-600 dark:text-gray-400 mb-6">
-              You&apos;ve been invited to collaborate on an ArcForge project. Click below to accept and join the team.
+              You&apos;ve been invited to collaborate on a DesignForge project. Click below to accept and join the team.
             </p>
             <Button
               onClick={handleAccept}

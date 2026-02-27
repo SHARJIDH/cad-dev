@@ -70,6 +70,9 @@ export default function CadGeneratorPage() {
     const [showUpdateDialog, setShowUpdateDialog] = useState(false);
     const [updatePromptText, setUpdatePromptText] = useState("");
 
+    // Ref to track when we're saving (not switching projects) — prevents clearing model state
+    const isSavingCurrentWorkRef = useRef(false);
+
     // Persistent model state across navigation
     const { model: persistedModel, code: persistedCode, updateModel: updatePersisted, updateCode: updatePersistedCode } = useCurrentModel();
 
@@ -83,6 +86,23 @@ export default function CadGeneratorPage() {
             setCurrentProjectId(projectId);
         }
     }, [searchParams]);
+
+    // Clear model and prompt when SWITCHING to a different project.
+    // Skip clearing when we're saving the current work to a new project.
+    useEffect(() => {
+        if (currentProjectId) {
+            if (isSavingCurrentWorkRef.current) {
+                // We're saving current work — don't clear the model
+                isSavingCurrentWorkRef.current = false;
+                return;
+            }
+            // Truly switching projects — clear ALL state
+            setGeneratedModel(null);
+            setGeneratedCode("");
+            setPrompt("");
+            setConversationHistory([]);
+        }
+    }, [currentProjectId]);
 
     // Close cost estimator on ESC
     useEffect(() => {
@@ -111,80 +131,81 @@ export default function CadGeneratorPage() {
 
     // Load conversation history and latest model when project data is available
     useEffect(() => {
-        if (messages && messages.length > 0) {
-            console.log('Loading messages from database:', messages);
-            
-            // Convert database messages to conversation format
-            const loadedMessages: Message[] = messages.map(msg => {
-                let metadata = msg.metadata;
-                // Parse metadata if it's a string
-                if (typeof metadata === 'string') {
-                    try {
-                        metadata = JSON.parse(metadata);
-                    } catch (e) {
-                        console.error('Failed to parse metadata:', e);
-                        metadata = null;
-                    }
-                }
+        if (project && currentProjectId) {
+            // Load from messages first (if they contain model data)
+            if (messages && messages.length > 0) {
+                console.log('Loading messages from database:', messages);
                 
-                return {
-                    id: msg.id,
-                    role: msg.role as 'user' | 'assistant',
-                    content: msg.content,
-                    timestamp: msg.createdAt.toString(),
-                    modelData: metadata?.modelData,
-                };
-            });
-            setConversationHistory(loadedMessages);
+                // Convert database messages to conversation format
+                const loadedMessages: Message[] = messages.map(msg => {
+                    let metadata = msg.metadata;
+                    // Parse metadata if it's a string
+                    if (typeof metadata === 'string') {
+                        try {
+                            metadata = JSON.parse(metadata);
+                        } catch (e) {
+                            console.error('Failed to parse metadata:', e);
+                            metadata = null;
+                        }
+                    }
+                    
+                    return {
+                        id: msg.id,
+                        role: msg.role as 'user' | 'assistant',
+                        content: msg.content,
+                        timestamp: msg.createdAt.toString(),
+                        modelData: metadata?.modelData,
+                    };
+                });
+                setConversationHistory(loadedMessages);
 
-            // Load the most recent model data
-            const lastMessageWithModel = [...messages].reverse().find(msg => {
-                let metadata = msg.metadata;
-                if (typeof metadata === 'string') {
-                    try {
-                        metadata = JSON.parse(metadata);
-                    } catch (e) {
-                        return false;
+                // Load the most recent model data from messages
+                const lastMessageWithModel = [...messages].reverse().find(msg => {
+                    let metadata = msg.metadata;
+                    if (typeof metadata === 'string') {
+                        try {
+                            metadata = JSON.parse(metadata);
+                        } catch (e) {
+                            return false;
+                        }
+                    }
+                    return metadata?.modelData;
+                });
+                
+                if (lastMessageWithModel) {
+                    let metadata = lastMessageWithModel.metadata;
+                    if (typeof metadata === 'string') {
+                        try {
+                            metadata = JSON.parse(metadata);
+                        } catch (e) {
+                            console.error('Failed to parse metadata:', e);
+                        }
+                    }
+                    if (metadata?.modelData) {
+                        console.log('Loading model from message:', metadata.modelData);
+                        setGeneratedModel(metadata.modelData);
                     }
                 }
-                return metadata?.modelData;
-            });
-            
-            if (lastMessageWithModel) {
-                let metadata = lastMessageWithModel.metadata;
-                if (typeof metadata === 'string') {
-                    try {
-                        metadata = JSON.parse(metadata);
-                    } catch (e) {
-                        console.error('Failed to parse metadata:', e);
+            } else if (versions && versions.length > 0) {
+                // Load from latest version if no messages
+                console.log('Loading versions from database:', versions);
+                const latestVersion = versions[0]; // versions are ordered by version desc
+                if (latestVersion.modelData) {
+                    let modelData = latestVersion.modelData;
+                    // Parse if string
+                    if (typeof modelData === 'string') {
+                        try {
+                            modelData = JSON.parse(modelData);
+                        } catch (e) {
+                            console.error('Failed to parse modelData:', e);
+                        }
                     }
-                }
-                if (metadata?.modelData) {
-                    console.log('Loading model from message:', metadata.modelData);
-                    setGeneratedModel(metadata.modelData);
+                    console.log('Loading model from version:', modelData);
+                    setGeneratedModel(modelData);
                 }
             }
         }
-
-        // Load latest version if available
-        if (versions && versions.length > 0) {
-            console.log('Loading versions from database:', versions);
-            const latestVersion = versions[0]; // versions are ordered by version desc
-            if (latestVersion.modelData) {
-                let modelData = latestVersion.modelData;
-                // Parse if string
-                if (typeof modelData === 'string') {
-                    try {
-                        modelData = JSON.parse(modelData);
-                    } catch (e) {
-                        console.error('Failed to parse modelData:', e);
-                    }
-                }
-                console.log('Loading model from version:', modelData);
-                setGeneratedModel(modelData);
-            }
-        }
-    }, [messages, versions]);
+    }, [project, currentProjectId]);
 
     // Default viewer settings (no settings panel — just sensible defaults)
     const viewerSettings = {
@@ -378,8 +399,7 @@ export default function CadGeneratorPage() {
     }) => {
         try {
             if (!currentProjectId) {
-                // Create new project WITHOUT thumbnail
-                // Thumbnail will be set when content is first saved/generated
+                // 1. Create the project
                 const response = await fetch('/api/projects', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -395,11 +415,49 @@ export default function CadGeneratorPage() {
                 }
 
                 const { project } = await response.json();
+
+                // 2. Persist the conversation history to the new project
+                for (const msg of conversationHistory) {
+                    try {
+                        await fetch(`/api/projects/${project.id}/messages`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                role: msg.role,
+                                content: msg.content,
+                                type: msg.modelData ? 'model' : 'text',
+                                metadata: msg.modelData ? { modelData: msg.modelData } : undefined,
+                            }),
+                        });
+                    } catch (err) {
+                        console.error('Failed to save message:', err);
+                    }
+                }
+
+                // 3. Create a version snapshot with the current model data
+                if (generatedModel) {
+                    try {
+                        await fetch(`/api/projects/${project.id}/versions`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                name: 'v1 — Initial Design',
+                                description: prompt || projectData.name,
+                                modelData: generatedModel,
+                            }),
+                        });
+                    } catch (err) {
+                        console.error('Failed to save version:', err);
+                    }
+                }
+
+                // 4. Set the flag so the clearing effect is skipped
+                isSavingCurrentWorkRef.current = true;
                 setCurrentProjectId(project.id);
-                
-                // Optionally set URL to include projectId
-                router.push(`/cad-generator?projectId=${project.id}`);
-                
+
+                // 5. Update the URL without a full navigation
+                router.replace(`/cad-generator?projectId=${project.id}`, { scroll: false });
+
                 toast.success(`Project "${projectData.name}" saved successfully!`);
                 setShowSaveModal(false);
             }
@@ -416,8 +474,9 @@ export default function CadGeneratorPage() {
         }
         
         // Save model to localStorage for Interior Designer
+        // This context (project button) means use the existing model
         localStorage.setItem('currentModel', JSON.stringify(generatedModel));
-        toast.success("Opening Interior Designer...");
+        toast.success("Opening Interior Designer with your 3D model...");
         router.push('/interior-designer');
     };
 

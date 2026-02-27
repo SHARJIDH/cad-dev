@@ -271,7 +271,6 @@ export interface AppSettings {
     profile: {
         name: string;
         email: string;
-        company: string;
         bio: string;
     };
     notifications: {
@@ -291,7 +290,6 @@ const DEFAULT_SETTINGS: AppSettings = {
     profile: {
         name: "Alice Chen",
         email: "alice.chen@example.com",
-        company: "Architectural Innovations",
         bio: "Lead architect specializing in sustainable design",
     },
     notifications: { email: true, app: true, projectUpdates: true, teamMessages: true },

@@ -14,7 +14,7 @@ export default function SignInPage() {
                 {/* Logo & branding */}
                 <div className="text-center space-y-2">
                     <h1 className="text-3xl font-bold bg-gradient-to-r from-orange-600 via-orange-500 to-amber-600 bg-clip-text text-transparent tracking-tight">
-                        ArcForge
+                        DesignForge
                     </h1>
                     <p className="text-gray-500 dark:text-gray-400 text-sm">
                         AI-Powered Design Studio

@@ -32,7 +32,7 @@ export async function sendInviteEmail(
         
         <p style="color: #666; line-height: 1.6;">
           <strong>${senderName}</strong> has invited you to collaborate on the project
-          <strong>"${projectName}"</strong> using ArcForge.
+          <strong>"${projectName}"</strong> using DesignForge.
         </p>
         
         <p style="color: #666; line-height: 1.6; margin-top: 30px;">
@@ -58,7 +58,7 @@ export async function sendInviteEmail(
         </p>
         
         <p style="color: #999; font-size: 12px; text-align: center;">
-          © 2026 ArcForge. All rights reserved.
+          © 2026 DesignForge. All rights reserved.
         </p>
       </div>
     `;
@@ -72,7 +72,7 @@ export async function sendInviteEmail(
         'Authorization': `Bearer ${process.env.RESEND_API_KEY || ''}`,
       },
       body: JSON.stringify({
-        from: process.env.RESEND_FROM_EMAIL || 'noreply@arcforge.ai',
+        from: process.env.RESEND_FROM_EMAIL || 'noreply@designforge.ai',
         to: recipientEmail,
         subject: `${senderName} invited you to ${projectName}`,
         html: emailHtml,
@@ -107,7 +107,7 @@ export async function sendProjectAccessEmail(
         
         <p style="color: #666; line-height: 1.6;">
           You have been granted <strong>${role}</strong> access to the project
-          <strong>"${projectName}"</strong> on ArcForge.
+          <strong>"${projectName}"</strong> on DesignForge.
         </p>
         
         <p style="color: #666; line-height: 1.6; margin-top: 20px;">
@@ -137,7 +137,7 @@ export async function sendProjectAccessEmail(
         'Authorization': `Bearer ${process.env.RESEND_API_KEY || ''}`,
       },
       body: JSON.stringify({
-        from: process.env.RESEND_FROM_EMAIL || 'noreply@arcforge.ai',
+        from: process.env.RESEND_FROM_EMAIL || 'noreply@designforge.ai',
         to: recipientEmail,
         subject: `You now have access to ${projectName}`,
         html: emailHtml,

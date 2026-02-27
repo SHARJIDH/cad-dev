@@ -28,10 +28,8 @@ import { ModeToggle } from "@/components/mode-toggle";
 const navItems = [
     { name: "Dashboard", link: "/dashboard" },
     { name: "Projects", link: "/projects" },
-    { name: "CAD Generator", link: "/cad-generator" },
     { name: "Interior Designer", link: "/interior-designer" },
-    // { name: "Analytics", link: "/analytics" },
-    // { name: "Team", link: "/team" },
+    { name: "CAD Generator", link: "/cad-generator" },
     { name: "Settings", link: "/settings" },
 ];
 
@@ -42,6 +40,13 @@ export function AppNavbar() {
 
     const handleNotificationClick = () => {
         router.push('/settings?tab=notifications');
+    };
+
+    const handleInteriorDesignerClick = () => {
+        // Clear any existing model from localStorage to ensure fresh start
+        localStorage.removeItem('currentModel');
+        // Navigate to interior designer for a fresh design session
+        router.push('/interior-designer');
     };
 
     return (
@@ -57,12 +62,12 @@ export function AppNavbar() {
                         <Wand2 className="h-5 w-5 text-white" />
                     </div>
                     <span className="font-bold text-lg bg-gradient-to-r from-orange-500 via-orange-400 to-amber-500 bg-clip-text text-transparent tracking-tight">
-                        ArcForge
+                        DesignForge
                     </span>
                 </Link>
 
                 {/* Nav Items */}
-                <NavItems items={navItems} />
+                <NavItems items={navItems} onSpecialClick={handleInteriorDesignerClick} />
 
                 {/* Right Side — Theme Toggle + Notifications + Auth */}
                 <div className="relative z-20 flex items-center gap-2">
@@ -74,9 +79,6 @@ export function AppNavbar() {
                         title="Notifications"
                     >
                         <Bell className="h-5 w-5 text-gray-600 dark:text-gray-400 group-hover:text-orange-500 dark:group-hover:text-orange-400 transition-colors" />
-                        <span className="absolute -top-0.5 -right-0.5 bg-gradient-to-r from-orange-500 to-amber-500 text-white text-[10px] w-4 h-4 rounded-full flex items-center justify-center font-bold shadow-lg shadow-orange-500/40">
-                            2
-                        </span>
                     </button>
 
                     <SignedIn>
@@ -111,7 +113,7 @@ export function AppNavbar() {
                             <Wand2 className="h-4 w-4 text-white" />
                         </div>
                         <span className="font-bold bg-gradient-to-r from-orange-500 via-orange-400 to-amber-500 bg-clip-text text-transparent tracking-tight">
-                            ArcForge
+                            DesignForge
                         </span>
                     </Link>
                     <div className="flex items-center gap-2">
@@ -139,19 +141,37 @@ export function AppNavbar() {
                     className="!bg-white dark:!bg-dark-surface"
                 >
                     {navItems.map((item) => (
-                        <Link
-                            key={item.link}
-                            href={item.link}
-                            onClick={() => setIsMobileMenuOpen(false)}
-                            className={cn(
-                                "w-full px-4 py-2.5 rounded-lg text-sm font-medium transition-colors",
-                                pathname?.startsWith(item.link)
-                                    ? "bg-orange-50 dark:bg-dark-accent text-orange-600 dark:text-orange-400"
-                                    : "text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-dark-accent hover:text-gray-900 dark:hover:text-gray-200"
-                            )}
-                        >
-                            {item.name}
-                        </Link>
+                        item.name === "Interior Designer" ? (
+                            <button
+                                key={item.name}
+                                onClick={() => {
+                                    handleInteriorDesignerClick();
+                                    setIsMobileMenuOpen(false);
+                                }}
+                                className={cn(
+                                    "w-full px-4 py-2.5 rounded-lg text-sm font-medium transition-colors text-left",
+                                    pathname?.startsWith(item.link)
+                                        ? "bg-orange-50 dark:bg-dark-accent text-orange-600 dark:text-orange-400"
+                                        : "text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-dark-accent hover:text-gray-900 dark:hover:text-gray-200"
+                                )}
+                            >
+                                {item.name}
+                            </button>
+                        ) : (
+                            <Link
+                                key={item.link}
+                                href={item.link}
+                                onClick={() => setIsMobileMenuOpen(false)}
+                                className={cn(
+                                    "w-full px-4 py-2.5 rounded-lg text-sm font-medium transition-colors",
+                                    pathname?.startsWith(item.link)
+                                        ? "bg-orange-50 dark:bg-dark-accent text-orange-600 dark:text-orange-400"
+                                        : "text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-dark-accent hover:text-gray-900 dark:hover:text-gray-200"
+                                )}
+                            >
+                                {item.name}
+                            </Link>
+                        )
                     ))}
                     <SignedOut>
                         <SignInButton mode="redirect">

@@ -55,7 +55,6 @@ export default function SettingsPage() {
             setProfile({
                 name: user.fullName || user.firstName || settings.profile.name,
                 email: user.emailAddresses[0]?.emailAddress || settings.profile.email,
-                company: settings.profile.company,
                 bio: settings.profile.bio,
             });
         }
@@ -190,21 +189,6 @@ export default function SettingsPage() {
                                             setProfile({
                                                 ...profile,
                                                 email: e.target.value,
-                                            })
-                                        }
-                                        className="border-2 focus:border-orange-300 dark:focus:border-orange-500/50"
-                                    />
-                                </div>
-
-                                <div className="space-y-2">
-                                    <Label htmlFor="company" className="text-foreground font-semibold">Company</Label>
-                                    <Input
-                                        id="company"
-                                        value={profile.company}
-                                        onChange={(e) =>
-                                            setProfile({
-                                                ...profile,
-                                                company: e.target.value,
                                             })
                                         }
                                         className="border-2 focus:border-orange-300 dark:focus:border-orange-500/50"

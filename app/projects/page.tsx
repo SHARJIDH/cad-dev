@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
     Card,
@@ -31,6 +32,7 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
 import {
     Select,
     SelectContent,
@@ -67,14 +69,16 @@ function timeAgo(isoDate: string): string {
 }
 
 export default function ProjectsPage() {
+    const router = useRouter();
     const { projects, isLoading, createProject, deleteProject: deleteProjectApi } = useProjects();
     const [searchQuery, setSearchQuery] = useState("");
     const [activeFilter, setActiveFilter] = useState("all");
-    const [createOpen, setCreateOpen] = useState(false);
 
     // New project form
     const [newTitle, setNewTitle] = useState("");
     const [newDescription, setNewDescription] = useState("");
+    const [newIsPublic, setNewIsPublic] = useState(false);
+    const [dialogOpen, setDialogOpen] = useState(false);
 
     // Filter projects
     const filteredProjects = projects.filter((project) => {
@@ -89,15 +93,18 @@ export default function ProjectsPage() {
     const handleCreate = async () => {
         if (!newTitle.trim()) return;
         try {
-            await createProject({
+            const newProject = await createProject({
                 name: newTitle.trim(),
                 description: newDescription.trim(),
-                isPublic: false,
+                isPublic: newIsPublic,
             });
             setNewTitle("");
             setNewDescription("");
-            setCreateOpen(false);
+            setNewIsPublic(false);
+            setDialogOpen(false);
             toast({ title: "Project created", description: `"${newTitle}" has been created.` });
+            // Navigate to the CAD generator with the new project
+            router.push(`/cad-generator?projectId=${newProject.id}`);
         } catch (error) {
             toast({ 
                 title: "Error", 
@@ -124,6 +131,36 @@ export default function ProjectsPage() {
         }
     };
 
+    const handleTogglePublic = async (projectId: string, isPublic: boolean) => {
+        try {
+            const response = await fetch(`/api/projects/${projectId}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ isPublic }),
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to update project');
+            }
+
+            // Refresh projects list
+            window.location.reload();
+            
+            toast({ 
+                title: isPublic ? "Project is now public" : "Project is now private", 
+                description: isPublic 
+                    ? "Anyone with the link can view this project" 
+                    : "Only team members can access this project",
+            });
+        } catch (error) {
+            toast({ 
+                title: "Error", 
+                description: "Failed to update project visibility", 
+                variant: "destructive" 
+            });
+        }
+    };
+
     return (
         <div className="container mx-auto p-6 space-y-6 bg-gradient-to-br from-orange-50/30 via-background to-amber-50/30 dark:from-dark-bg dark:via-dark-surface dark:to-dark-bg min-h-screen transition-colors duration-300">
             {/* Header */}
@@ -141,7 +178,7 @@ export default function ProjectsPage() {
                 </div>
 
                 <div className="flex gap-2">
-                    <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+                    <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
                         <DialogTrigger asChild>
                             <Button className="gap-1 bg-gradient-to-r from-orange-500 to-amber-500 shadow-lg shadow-orange-500/30 hover:shadow-xl hover:shadow-orange-500/40 transition-all">
                                 <Plus className="h-4 w-4" />
@@ -162,9 +199,21 @@ export default function ProjectsPage() {
                                     <Label>Description</Label>
                                     <Textarea placeholder="Brief description of the project..." value={newDescription} onChange={(e) => setNewDescription(e.target.value)} className="border-2 focus:border-orange-300 dark:focus:border-orange-500/50" />
                                 </div>
+                                <div className="flex items-center justify-between">
+                                    <div className="space-y-0.5">
+                                        <Label>Public Project</Label>
+                                        <p className="text-sm text-muted-foreground">
+                                            Anyone with the link can view this project
+                                        </p>
+                                    </div>
+                                    <Switch
+                                        checked={newIsPublic}
+                                        onCheckedChange={setNewIsPublic}
+                                    />
+                                </div>
                             </div>
                             <DialogFooter>
-                                <Button variant="outline" onClick={() => setCreateOpen(false)}>Cancel</Button>
+                                <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
                                 <Button onClick={handleCreate} disabled={!newTitle.trim()} className="bg-gradient-to-r from-orange-500 to-amber-500 shadow-lg shadow-orange-500/30">
                                     <Plus className="h-4 w-4 mr-1" />
                                     Create Project
@@ -207,6 +256,7 @@ export default function ProjectsPage() {
                             key={project.id}
                             project={project}
                             onDelete={handleDelete}
+                            onTogglePublic={handleTogglePublic}
                         />
                     ))}
                 </div>
@@ -219,7 +269,7 @@ export default function ProjectsPage() {
                     <p className="text-muted-foreground max-w-md">
                         Create your first project to get started with AI-powered CAD design.
                     </p>
-                    <Button className="mt-6 gap-1 bg-gradient-to-r from-orange-500 to-amber-500 shadow-lg shadow-orange-500/30" onClick={() => setCreateOpen(true)}>
+                    <Button className="mt-6 gap-1 bg-gradient-to-r from-orange-500 to-amber-500 shadow-lg shadow-orange-500/30" onClick={() => setDialogOpen(true)}>
                         <Plus className="h-4 w-4" />
                         New Project
                     </Button>
@@ -236,7 +286,7 @@ type ProjectCardProps = {
         description?: string | null;
         createdAt: Date | string;
         updatedAt: Date | string;
-        thumbnailUrl?: string | null;
+        isPublic?: boolean;
         _count?: {
             messages: number;
             versions: number;
@@ -253,9 +303,11 @@ type ProjectCardProps = {
         }>;
     };
     onDelete: (id: string, name: string) => void;
+    onTogglePublic?: (id: string, isPublic: boolean) => void;
 };
 
-function ProjectCard({ project, onDelete }: ProjectCardProps) {
+function ProjectCard({ project, onDelete, onTogglePublic }: ProjectCardProps) {
+    const [isTogglingPublic, setIsTogglingPublic] = useState(false);
     const formattedDate = new Date(project.updatedAt).toLocaleDateString('en-US', {
         month: 'short',
         day: 'numeric',
@@ -266,15 +318,7 @@ function ProjectCard({ project, onDelete }: ProjectCardProps) {
         <Link href={`/cad-generator?projectId=${project.id}`}>
             <Card className="overflow-hidden flex flex-col h-full group hover:shadow-2xl hover:-translate-y-1 transition-all border-2 border-border hover:border-orange-200 dark:hover:border-orange-500/30 cursor-pointer dark:bg-dark-surface">
                 <div className="aspect-video relative bg-gradient-to-br from-orange-100 to-amber-100 dark:from-orange-500/20 dark:to-amber-500/20 flex items-center justify-center overflow-hidden">
-                    {project.thumbnailUrl ? (
-                        <img 
-                            src={project.thumbnailUrl} 
-                            alt={project.name}
-                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                        />
-                    ) : (
-                        <Building2 className="h-16 w-16 text-orange-400 dark:text-orange-500/50" />
-                    )}
+                    <Building2 className="h-16 w-16 text-orange-400 dark:text-orange-500/50" />
                 </div>
                 <CardHeader>
                     <div className="flex justify-between items-start">
@@ -315,14 +359,36 @@ function ProjectCard({ project, onDelete }: ProjectCardProps) {
                                             <Globe className="h-4 w-4 mr-2 text-green-600" />
                                             Copy Public Link
                                         </DropdownMenuItem>
+                                        <DropdownMenuItem
+                                            onClick={(e) => {
+                                                e.preventDefault();
+                                                e.stopPropagation();
+                                                setIsTogglingPublic(true);
+                                                onTogglePublic?.(project.id, false);
+                                            }}
+                                            disabled={isTogglingPublic}
+                                            className="cursor-pointer"
+                                        >
+                                            <Lock className="h-4 w-4 mr-2" />
+                                            Make Private
+                                        </DropdownMenuItem>
                                         <DropdownMenuSeparator />
                                     </>
                                 ) : (
                                     <>
-                                        <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground flex items-center gap-2">
-                                            <Lock className="h-4 w-4" />
-                                            Private
-                                        </div>
+                                        <DropdownMenuItem
+                                            onClick={(e) => {
+                                                e.preventDefault();
+                                                e.stopPropagation();
+                                                setIsTogglingPublic(true);
+                                                onTogglePublic?.(project.id, true);
+                                            }}
+                                            disabled={isTogglingPublic}
+                                            className="cursor-pointer"
+                                        >
+                                            <Globe className="h-4 w-4 mr-2 text-amber-600" />
+                                            Make Public
+                                        </DropdownMenuItem>
                                         <DropdownMenuSeparator />
                                     </>
                                 )}

@@ -12,7 +12,7 @@ import { ClerkProviderWrapper } from "@/components/clerk-provider-wrapper";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata = {
-  title: "ArcForge — AI Design Studio",
+  title: "DesignForge — AI-powered CAD & Interior Design Platform",
   description:
     "Transform your ideas into reality with AI-powered design tools. Create, visualize, and refine your projects with intelligent assistance.",
   icons: {

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Wand2, ArrowRight, Layers, Sparkles, Zap, Building2, Palette, BrainCircuit } from "lucide-react";
+import { Wand2, ArrowRight, Layers, Sparkles, Zap, Building2, Palette, BrainCircuit, Mail } from "lucide-react";
 import { Spotlight } from "@/components/ui/spotlight";
 import { TextGenerateEffect } from "@/components/ui/text-generate-effect";
 import { MovingBorder } from "@/components/ui/moving-border";
@@ -47,7 +47,7 @@ export default function Home() {
                 <Wand2 className="h-5 w-5 text-white" />
             </div>
             <span className="font-bold text-lg bg-gradient-to-r from-orange-500 via-orange-400 to-amber-500 bg-clip-text text-transparent tracking-tight">
-              ArcForge
+              DesignForge
             </span>
           </Link>
 
@@ -80,7 +80,7 @@ export default function Home() {
                 <Wand2 className="h-4 w-4 text-white" />
               </div>
               <span className="font-bold bg-gradient-to-r from-orange-500 via-orange-400 to-amber-500 bg-clip-text text-transparent tracking-tight">
-                ArcForge
+                DesignForge
               </span>
             </Link>
             <MobileNavToggle
@@ -128,7 +128,7 @@ export default function Home() {
       </Navbar>
 
       {/* ========== Hero Section ========== */}
-      <section className="relative px-4 md:px-6 pt-28 pb-16 md:pt-36 md:pb-24 lg:pt-44 lg:pb-32 overflow-hidden">
+      <section className="relative px-4 md:px-6 pt-20 pb-8 md:pt-24 md:pb-12 lg:pt-28 lg:pb-16 overflow-hidden">
         <Spotlight
           className="-top-40 left-0 md:left-60 md:-top-20"
           fill="rgba(249, 115, 22, 0.15)"
@@ -140,23 +140,23 @@ export default function Home() {
           {/* Badge */}
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-orange-100 to-amber-100 dark:from-orange-500/20 dark:to-amber-500/20 text-orange-700 dark:text-orange-400 text-sm font-medium mb-8 border border-orange-200/50 dark:border-orange-500/30 shadow-sm">
             <Sparkles className="h-4 w-4" />
-            <span>Introducing ArcForge</span>
+            <span>Introducing DesignForge</span>
             <ArrowRight className="h-3 w-3" />
           </div>
 
           {/* Animated Title */}
           <TextGenerateEffect
             words="Forge Ideas Into Architecture"
-            className="text-5xl md:text-7xl font-bold tracking-tight bg-gradient-to-r from-orange-600 via-orange-500 to-amber-600 bg-clip-text text-transparent pb-2"
+            className="text-4xl md:text-6xl font-bold tracking-tight bg-gradient-to-r from-orange-600 via-orange-500 to-amber-600 bg-clip-text text-transparent pb-2"
           />
 
-          <p className="text-gray-500 dark:text-gray-400 text-lg md:text-xl max-w-2xl mx-auto mt-6 leading-relaxed">
+          <p className="text-gray-500 dark:text-gray-400 text-lg md:text-xl max-w-2xl mx-auto mt-4 leading-relaxed">
             Transform your architectural ideas into reality with intelligent AI tools.
             Create stunning floor plans, 3D models, and design documents in minutes.
           </p>
 
           {/* CTA Buttons */}
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mt-10">
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-0 mt-6">
             <SignedIn>
               <Link href="/cad-generator">
                 <MovingBorder
@@ -194,27 +194,11 @@ export default function Home() {
               </SignInButton>
             </SignedOut>
           </div>
-
-          {/* Stats */}
-          <div className="grid grid-cols-3 gap-8 max-w-lg mx-auto mt-16">
-            {[
-              { value: "10K+", label: "Designs Created" },
-              { value: "50%", label: "Faster Workflow" },
-              { value: "99%", label: "Client Satisfaction" },
-            ].map((stat, i) => (
-              <div key={i} className="text-center">
-                <div className="text-2xl md:text-3xl font-bold bg-gradient-to-r from-orange-500 to-amber-500 bg-clip-text text-transparent">
-                  {stat.value}
-                </div>
-                <div className="text-xs text-gray-400 mt-1">{stat.label}</div>
-              </div>
-            ))}
-          </div>
         </div>
       </section>
 
       {/* ========== Features Section ========== */}
-      <section id="features" className="px-4 md:px-6 py-20 bg-gradient-to-b from-background to-muted/50">
+      <section id="features" className="px-4 md:px-6 py-8 bg-gradient-to-b from-background to-muted/50">
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
@@ -285,24 +269,24 @@ export default function Home() {
           <Meteors number={15} className="before:from-white" />
         </div>
 
-        <div className="max-w-3xl mx-auto text-center relative z-10">
-          <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
+        <div className="max-w-5xl mx-auto relative z-10">
+          <h2 className="text-3xl md:text-4xl font-bold text-white mb-4 text-center">
             Get in Touch
           </h2>
-          <p className="text-orange-100 text-lg mb-8 max-w-xl mx-auto">
+          <p className="text-orange-100 text-lg mb-12 text-center max-w-2xl mx-auto">
             Have questions or need support? Reach out to our team.
           </p>
-          <div className="flex flex-col items-center gap-6 mb-8">
-            <div className="flex flex-col items-center gap-2">
-              <p className="text-white text-lg">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12 mb-8">
+            <div className="flex flex-col items-center justify-center">
+              <p className="text-white text-lg mb-3">
                 <strong>Shaik Sharjidh</strong>
               </p>
               <a href="mailto:sharjidh2003@gmail.com" className="text-white hover:text-orange-200 transition-colors underline font-semibold">
                 sharjidh2003@gmail.com
               </a>
             </div>
-            <div className="flex flex-col items-center gap-2">
-              <p className="text-white text-lg">
+            <div className="flex flex-col items-center justify-center">
+              <p className="text-white text-lg mb-3">
                 <strong>Sri Sowmya Vishnuvajhala</strong>
               </p>
               <a href="mailto:srisowmyav28@gmail.com" className="text-white hover:text-orange-200 transition-colors underline font-semibold">
@@ -310,47 +294,70 @@ export default function Home() {
               </a>
             </div>
           </div>
-          <SignedIn>
-            <Link href="/dashboard">
-              <Button size="lg" className="bg-white text-orange-600 hover:bg-gray-100 font-semibold px-8 rounded-xl shadow-xl shadow-orange-900/30 gap-2">
-                Go to Dashboard
-                <ArrowRight className="h-4 w-4" />
-              </Button>
-            </Link>
-          </SignedIn>
-          <SignedOut>
-            <SignUpButton mode="redirect">
-              <Button size="lg" className="bg-white text-orange-600 hover:bg-gray-100 font-semibold px-8 rounded-xl shadow-xl shadow-orange-900/30 gap-2">
-                Get Started Free
-                <ArrowRight className="h-4 w-4" />
-              </Button>
-            </SignUpButton>
-          </SignedOut>
+          <div className="flex justify-center">
+            <SignedIn>
+              <Link href="/dashboard">
+                <Button size="lg" className="bg-white text-orange-600 hover:bg-gray-100 font-semibold px-8 rounded-xl shadow-xl shadow-orange-900/30 gap-2">
+                  Go to Dashboard
+                  <ArrowRight className="h-4 w-4" />
+                </Button>
+              </Link>
+            </SignedIn>
+            <SignedOut>
+              <SignUpButton mode="redirect">
+                <Button size="lg" className="bg-white text-orange-600 hover:bg-gray-100 font-semibold px-8 rounded-xl shadow-xl shadow-orange-900/30 gap-2">
+                  Get Started Free
+                  <ArrowRight className="h-4 w-4" />
+                </Button>
+              </SignUpButton>
+            </SignedOut>
+          </div>
         </div>
       </section>
 
       {/* ========== Footer ========== */}
-      <footer className="px-4 md:px-6 py-12 bg-muted/50 dark:bg-dark-surface border-t border-border">
+      <footer className="px-4 md:px-6 py-16 bg-gradient-to-b from-background to-muted/50 dark:from-dark-surface dark:to-background/50 border-t border-border">
         <div className="max-w-6xl mx-auto">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-            <div className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-orange-500 to-amber-500 flex items-center justify-center">
-                <Wand2 className="h-4 w-4 text-white" />
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-12 items-start md:items-center mb-8">
+            {/* Logo Section */}
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-orange-500 to-amber-500 flex items-center justify-center shadow-lg shadow-orange-500/20">
+                <Wand2 className="h-5 w-5 text-white" />
               </div>
-              <span className="font-bold bg-gradient-to-r from-orange-500 via-orange-400 to-amber-500 bg-clip-text text-transparent tracking-tight">
-                ArcForge
-              </span>
+              <div>
+                <span className="font-bold text-lg bg-gradient-to-r from-orange-500 via-orange-400 to-amber-500 bg-clip-text text-transparent tracking-tight block">
+                  DesignForge
+                </span>
+                <p className="text-xs text-muted-foreground mt-1">AI-powered CAD & Design</p>
+              </div>
             </div>
-            <div className="flex items-center gap-8 text-sm text-muted-foreground">
-              <a href="#features" className="hover:text-orange-500 transition-colors">Features</a>
-              <a href="#contact" className="hover:text-orange-500 transition-colors">Contact</a>
-              <a href="mailto:sharjidh2003@gmail.com" className="hover:text-orange-500 transition-colors">sharjidh2003@gmail.com</a>
-              <a href="mailto:srisowmyav28@gmail.com" className="hover:text-orange-500 transition-colors">srisowmyav28@gmail.com</a>
+
+            {/* Links Section */}
+            <div className="flex flex-col gap-4 md:flex-row md:justify-center md:gap-8">
+              <a href="#features" className="text-sm text-muted-foreground hover:text-orange-500 transition-colors duration-200 font-medium">
+                Features
+              </a>
+              <a href="#contact" className="text-sm text-muted-foreground hover:text-orange-500 transition-colors duration-200 font-medium">
+                Contact
+              </a>
             </div>
-            <p className="text-sm text-muted-foreground">
-              © 2026 ArcForge. All rights reserved.
-            </p>
+
+            {/* Contact Section */}
+            <div className="flex flex-col gap-3 md:text-right">
+              <p className="text-xs font-semibold text-foreground uppercase tracking-wide">Get in Touch</p>
+              <a href="mailto:sharjidh2003@gmail.com" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-orange-500 transition-colors duration-200 md:justify-end group">
+                <Mail className="h-4 w-4 opacity-60 group-hover:opacity-100 transition-opacity" />
+                sharjidh2003@gmail.com
+              </a>
+              <a href="mailto:srisowmyav28@gmail.com" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-orange-500 transition-colors duration-200 md:justify-end group">
+                <Mail className="h-4 w-4 opacity-60 group-hover:opacity-100 transition-opacity" />
+                srisowmyav28@gmail.com
+              </a>
+            </div>
           </div>
+
+          {/* Divider */}
+          <div className="h-px bg-gradient-to-r from-transparent via-orange-200 dark:via-orange-500/30 to-transparent mb-8" />
         </div>
       </footer>
     </div>
