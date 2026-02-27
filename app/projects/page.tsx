@@ -49,6 +49,8 @@ import {
     Trash2,
     Users,
     Sparkles,
+    Lock,
+    Globe,
 } from "lucide-react";
 import Link from "next/link";
 import { useProjects } from "@/hooks/use-projects";
@@ -277,9 +279,16 @@ function ProjectCard({ project, onDelete }: ProjectCardProps) {
                 <CardHeader>
                     <div className="flex justify-between items-start">
                         <div className="flex-1">
-                            <CardTitle className="text-lg mb-1 group-hover:text-orange-500 transition-colors">
-                                {project.name}
-                            </CardTitle>
+                            <div className="flex items-center gap-2 mb-1">
+                                <CardTitle className="text-lg group-hover:text-orange-500 transition-colors">
+                                    {project.name}
+                                </CardTitle>
+                                {project.isPublic ? (
+                                    <Globe className="h-4 w-4 text-green-600" title="Public" />
+                                ) : (
+                                    <Lock className="h-4 w-4 text-gray-400 dark:text-gray-500" title="Private" />
+                                )}
+                            </div>
                             <CardDescription className="line-clamp-2">
                                 {project.description || 'No description'}
                             </CardDescription>
@@ -291,6 +300,32 @@ function ProjectCard({ project, onDelete }: ProjectCardProps) {
                                 </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" onClick={(e) => e.preventDefault()} className="dark:bg-dark-surface dark:border-dark-border">
+                                {project.isPublic ? (
+                                    <>
+                                        <DropdownMenuItem 
+                                            onClick={(e) => {
+                                                e.preventDefault();
+                                                e.stopPropagation();
+                                                const publicLink = `${window.location.origin}/project/${project.id}/public`;
+                                                navigator.clipboard.writeText(publicLink);
+                                                alert('Public link copied to clipboard!');
+                                            }}
+                                            className="cursor-pointer"
+                                        >
+                                            <Globe className="h-4 w-4 mr-2 text-green-600" />
+                                            Copy Public Link
+                                        </DropdownMenuItem>
+                                        <DropdownMenuSeparator />
+                                    </>
+                                ) : (
+                                    <>
+                                        <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground flex items-center gap-2">
+                                            <Lock className="h-4 w-4" />
+                                            Private
+                                        </div>
+                                        <DropdownMenuSeparator />
+                                    </>
+                                )}
                                 <DropdownMenuItem onClick={(e) => {
                                     e.preventDefault();
                                     e.stopPropagation();

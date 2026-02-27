@@ -2,6 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
     SignedIn,
     SignedOut,
@@ -36,12 +37,11 @@ const navItems = [
 
 export function AppNavbar() {
     const pathname = usePathname();
+    const router = useRouter();
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
     const handleNotificationClick = () => {
-        toast.info("Notifications feature coming soon!", {
-            description: "You have 2 pending notifications"
-        });
+        router.push('/settings?tab=notifications');
     };
 
     return (

@@ -1,7 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useTheme } from "next-themes";
+import { useSearchParams } from "next/navigation";
+import { useUser } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
 import {
     Card,
@@ -26,7 +28,6 @@ import {
     BellRing,
     BrainCircuit,
     Lock,
-    PaletteIcon,
     Save,
     User,
     Sparkles,
@@ -37,12 +38,28 @@ import { useSettings } from "@/lib/store";
 export default function SettingsPage() {
     const { settings, updateSettings } = useSettings();
     const { setTheme, theme } = useTheme();
-    const [activeTab, setActiveTab] = useState("account");
+    const searchParams = useSearchParams();
+    const { user } = useUser();
+    const tabParam = searchParams.get('tab');
+    const [activeTab, setActiveTab] = useState(tabParam || "account");
 
-    // Local state synced from store
+    // Initialize profile from Clerk user
     const [profile, setProfile] = useState(settings.profile);
     const [notifications, setNotifications] = useState(settings.notifications);
     const [aiSettings, setAiSettings] = useState(settings.ai);
+    const [uploadedPhotoUrl, setUploadedPhotoUrl] = useState<string | null>(null);
+
+    // Load Clerk user data into profile
+    useEffect(() => {
+        if (user) {
+            setProfile({
+                name: user.fullName || user.firstName || settings.profile.name,
+                email: user.emailAddresses[0]?.emailAddress || settings.profile.email,
+                company: settings.profile.company,
+                bio: settings.profile.bio,
+            });
+        }
+    }, [user]);
 
     // Appearance settings
     const [appearance, setAppearance] = useState({
@@ -81,14 +98,10 @@ export default function SettingsPage() {
                     onValueChange={setActiveTab}
                     className="space-y-6"
                 >
-                    <TabsList className="grid grid-cols-4 w-full max-w-2xl bg-card dark:bg-dark-surface border-2 border-border p-1">
+                    <TabsList className="grid grid-cols-3 w-full max-w-2xl bg-card dark:bg-dark-surface border-2 border-border p-1">
                         <TabsTrigger value="account" className="gap-2 data-[state=active]:bg-orange-50 dark:data-[state=active]:bg-dark-accent data-[state=active]:text-orange-600 dark:data-[state=active]:text-orange-400">
                             <User className="h-4 w-4" />
                             <span className="hidden sm:inline">Account</span>
-                        </TabsTrigger>
-                        <TabsTrigger value="appearance" className="gap-2 data-[state=active]:bg-orange-50 dark:data-[state=active]:bg-dark-accent data-[state=active]:text-orange-600 dark:data-[state=active]:text-orange-400">
-                            <PaletteIcon className="h-4 w-4" />
-                            <span className="hidden sm:inline">Appearance</span>
                         </TabsTrigger>
                         <TabsTrigger value="notifications" className="gap-2 data-[state=active]:bg-orange-50 dark:data-[state=active]:bg-dark-accent data-[state=active]:text-orange-600 dark:data-[state=active]:text-orange-400">
                             <BellRing className="h-4 w-4" />
@@ -113,13 +126,43 @@ export default function SettingsPage() {
                                 <div className="flex items-center gap-4 pb-4">
                                     <div className="relative">
                                         <Avatar className="h-20 w-20 border-4 border-orange-200 dark:border-dark-border">
-                                            <AvatarImage src="/placeholder.svg?height=80&width=80" />
-                                            <AvatarFallback className="bg-gradient-to-br from-orange-500 to-amber-500 text-white text-2xl">AC</AvatarFallback>
+                                            <AvatarImage 
+                                                src={uploadedPhotoUrl || user?.imageUrl || "/placeholder.svg?height=80&width=80"} 
+                                                alt={profile.name}
+                                            />
+                                            <AvatarFallback className="bg-gradient-to-br from-orange-500 to-amber-500 text-white text-2xl">
+                                                {profile.name ? profile.name.split(' ').map(n => n[0]).join('') : 'AC'}
+                                            </AvatarFallback>
                                         </Avatar>
                                     </div>
-                                    <Button variant="outline" size="sm" className="border-2 hover:bg-orange-50 dark:hover:bg-dark-accent hover:border-orange-300 dark:hover:border-orange-500/50">
-                                        Change Photo
-                                    </Button>
+                                    <div>
+                                        <Button 
+                                            variant="outline" 
+                                            size="sm" 
+                                            className="border-2 hover:bg-orange-50 dark:hover:bg-dark-accent hover:border-orange-300 dark:hover:border-orange-500/50"
+                                            onClick={() => document.getElementById('photo-upload')?.click()}
+                                        >
+                                            {uploadedPhotoUrl ? 'Change Photo' : 'Upload Photo'}
+                                        </Button>
+                                        <input
+                                            id="photo-upload"
+                                            type="file"
+                                            accept="image/*"
+                                            className="hidden"
+                                            onChange={(e) => {
+                                                const file = e.target.files?.[0];
+                                                if (file) {
+                                                    const reader = new FileReader();
+                                                    reader.onload = (event) => {
+                                                        const result = event.target?.result as string;
+                                                        setUploadedPhotoUrl(result);
+                                                        toast({ title: "Photo uploaded", description: "Your profile photo has been updated." });
+                                                    };
+                                                    reader.readAsDataURL(file);
+                                                }
+                                            }}
+                                        />
+                                    </div>
                                 </div>
 
                                 <div className="space-y-2">
@@ -181,74 +224,6 @@ export default function SettingsPage() {
                                             })
                                         }
                                         className="border-2 focus:border-orange-300 dark:focus:border-orange-500/50"
-                                    />
-                                </div>
-
-                                <div className="pt-2">
-                                    <Button onClick={handleSave} className="bg-gradient-to-r from-orange-500 to-amber-500 shadow-lg shadow-orange-500/30 hover:shadow-xl hover:shadow-orange-500/40 transition-all">
-                                        <Save className="h-4 w-4 mr-2" />
-                                        Save Changes
-                                    </Button>
-                                </div>
-                            </CardContent>
-                        </Card>
-                    </TabsContent>
-
-                    {/* Appearance Settings */}
-                    <TabsContent value="appearance" className="space-y-6">
-                        <Card className="border-2 border-border shadow-lg dark:bg-dark-surface">
-                            <CardHeader className="bg-gradient-to-r from-orange-50 to-amber-50 dark:from-dark-accent dark:to-dark-surface border-b border-border">
-                                <CardTitle className="flex items-center gap-2 text-foreground">
-                                    <PaletteIcon className="h-5 w-5" />
-                                    Display Options
-                                </CardTitle>
-                            </CardHeader>
-                            <CardContent className="space-y-6 pt-6">
-                                <div className="space-y-2">
-                                    <Label htmlFor="theme" className="text-foreground font-semibold">Theme</Label>
-                                    <Select
-                                        value={theme || "system"}
-                                        onValueChange={(value) => {
-                                            setTheme(value);
-                                            setAppearance({
-                                                ...appearance,
-                                                theme: value,
-                                            });
-                                        }}
-                                    >
-                                        <SelectTrigger id="theme" className="border-2 focus:border-orange-300 dark:focus:border-orange-500/50">
-                                            <SelectValue placeholder="Select theme" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="light">
-                                                Light
-                                            </SelectItem>
-                                            <SelectItem value="dark">
-                                                Dark
-                                            </SelectItem>
-                                            <SelectItem value="system">
-                                                System Default
-                                            </SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-
-                                <div className="flex items-center justify-between p-4 rounded-lg border-2 border-border hover:border-orange-200 dark:hover:border-orange-500/30 transition-colors">
-                                    <div className="space-y-0.5">
-                                        <Label className="text-foreground font-semibold">Reduced Motion</Label>
-                                        <p className="text-sm text-muted-foreground">
-                                            Minimize animations throughout the
-                                            interface
-                                        </p>
-                                    </div>
-                                    <Switch
-                                        checked={appearance.reducedMotion}
-                                        onCheckedChange={(checked) =>
-                                            setAppearance({
-                                                ...appearance,
-                                                reducedMotion: checked,
-                                            })
-                                        }
                                     />
                                 </div>
 

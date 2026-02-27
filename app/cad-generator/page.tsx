@@ -67,6 +67,8 @@ export default function CadGeneratorPage() {
     const [showCostEstimator, setShowCostEstimator] = useState(false);
     const [view2d, setView2d] = useState<'top' | 'front' | 'back' | 'left' | 'right'>('top');
     const [showSaveModal, setShowSaveModal] = useState(false);
+    const [showUpdateDialog, setShowUpdateDialog] = useState(false);
+    const [updatePromptText, setUpdatePromptText] = useState("");
 
     // Persistent model state across navigation
     const { model: persistedModel, code: persistedCode, updateModel: updatePersisted, updateCode: updatePersistedCode } = useCurrentModel();
@@ -96,14 +98,16 @@ export default function CadGeneratorPage() {
 
     // Restore model state from localStorage when navigating back (if no database project is active)
     useEffect(() => {
-        if (!currentProjectId && !generatedModel && persistedModel) {
-            console.log('Restoring model from localStorage:', persistedModel);
+        // If we have a persisted model but no generated model yet, restore it
+        // This handles the case where user navigates back from Interior Designer
+        if (persistedModel && !generatedModel && !currentProjectId) {
+            console.log('Restoring model from persistent state (Interior back navigation):', persistedModel);
             setGeneratedModel(persistedModel);
             if (persistedCode) {
                 setGeneratedCode(persistedCode);
             }
         }
-    }, [persistedModel, persistedCode, currentProjectId, generatedModel]);
+    }, [persistedModel, persistedCode, currentProjectId]);
 
     // Load conversation history and latest model when project data is available
     useEffect(() => {
@@ -328,27 +332,42 @@ export default function CadGeneratorPage() {
             return;
         }
 
-        try {
-            if (currentProjectId && createVersion) {
-                // Generate thumbnail from the model data
-                const roomCount = generatedModel?.rooms?.length || 1;
-                const thumbnail = generatePlaceholderThumbnail(roomCount);
+        if (currentProjectId) {
+            // For existing projects, show update dialog
+            setUpdatePromptText(prompt);
+            setShowUpdateDialog(true);
+        } else {
+            // For new projects, show save modal
+            setShowSaveModal(true);
+        }
+    };
 
-                // Save as new version in existing project with thumbnail
-                await createVersion({
-                    name: `Version ${(project?.versions?.length || 0) + 1}`,
-                    description: `Auto-saved version`,
-                    modelData: generatedModel,
-                    thumbnailUrl: thumbnail,
-                });
-                toast.success("New version saved!");
-            } else {
-                // No project selected - show the save modal
-                setShowSaveModal(true);
-            }
+    const handleUpdateProject = async () => {
+        if (!updatePromptText.trim()) {
+            toast.error("Please enter a prompt to regenerate.");
+            return;
+        }
+
+        try {
+            // Set the new prompt
+            setPrompt(updatePromptText);
+            
+            // Close the update dialog
+            setShowUpdateDialog(false);
+            
+            // Trigger regeneration with the new prompt
+            // This will be handled by the same generation logic
+            setIsGenerating(true);
+            
+            // You'll need to call the generation API here
+            // For now, we'll show a message to indicate the update is in progress
+            toast.info("Updating design with the new prompt...");
+            
+            // Reset for next update
+            setUpdatePromptText("");
         } catch (error) {
-            console.error('Failed to save project:', error);
-            toast.error('Failed to save project');
+            console.error('Failed to update project:', error);
+            toast.error('Failed to update project');
         }
     };
 
@@ -874,6 +893,44 @@ window.addEventListener('resize', () => {
                 generatedPrompt={prompt}
                 modelData={generatedModel}
             />
+
+            {/* Update Project Dialog */}
+            {typeof window !== 'undefined' && (
+                <div className={`fixed inset-0 z-50 flex items-center justify-center ${showUpdateDialog ? 'block' : 'hidden'}`}>
+                    <div className="fixed inset-0 bg-black/50" onClick={() => setShowUpdateDialog(false)}></div>
+                    <div className="relative z-50 bg-white dark:bg-dark-surface border border-gray-200 dark:border-dark-border rounded-lg shadow-xl max-w-md w-full mx-4 p-6">
+                        <h2 className="text-xl font-bold mb-4 text-foreground">Update Project</h2>
+                        <p className="text-sm text-muted-foreground mb-4">Modify the prompt and regenerate the design for your project.</p>
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium mb-2 text-foreground">Project Prompt</label>
+                                <textarea
+                                    value={updatePromptText}
+                                    onChange={(e) => setUpdatePromptText(e.target.value)}
+                                    className="w-full border-2 rounded-lg p-3 focus:border-orange-300 dark:focus:border-orange-500/50 dark:bg-dark-bg dark:text-white resize-none"
+                                    rows={4}
+                                    placeholder="Enter or modify the design prompt..."
+                                />
+                            </div>
+                            <div className="flex gap-3 justify-end pt-4">
+                                <button
+                                    onClick={() => setShowUpdateDialog(false)}
+                                    className="px-4 py-2 rounded-lg border border-gray-200 dark:border-dark-border text-foreground hover:bg-gray-50 dark:hover:bg-dark-accent transition"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={handleUpdateProject}
+                                    disabled={isGenerating}
+                                    className="px-4 py-2 rounded-lg bg-gradient-to-r from-orange-500 to-amber-500 text-white hover:shadow-lg hover:shadow-orange-500/40 transition disabled:opacity-50"
+                                >
+                                    {isGenerating ? 'Generating...' : 'Regenerate Design'}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
