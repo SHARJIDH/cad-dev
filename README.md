@@ -402,10 +402,6 @@ We welcome contributions! Please:
 
 For major changes, please open an issue first to discuss your ideas.
 
-## 📝 License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
-
 ## 🙋 Support
 
 - Open an issue on GitHub for bug reports
