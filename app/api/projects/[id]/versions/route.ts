@@ -84,9 +84,16 @@ export async function POST(
     });
 
     // Update project timestamp
+    const updateData: any = { updatedAt: new Date() };
+    
+    // If thumbnail is provided, update the project's thumbnail
+    if (thumbnailUrl) {
+      updateData.thumbnailUrl = thumbnailUrl;
+    }
+    
     await prisma.project.update({
       where: { id },
-      data: { updatedAt: new Date() },
+      data: updateData,
     });
 
     return NextResponse.json({ version }, { status: 201 });

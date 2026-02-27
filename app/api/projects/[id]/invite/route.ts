@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { prisma } from '@/lib/prisma';
 import { randomBytes } from 'crypto';
+import { sendInviteEmail } from '@/lib/email-service';
 
 // POST /api/projects/[id]/invite - Send invite to project
 export async function POST(
@@ -72,24 +73,15 @@ export async function POST(
       );
     }
 
-    // Check if there's already a pending invite
-    const existingInvite = await prisma.projectInvite.findFirst({
+    // Delete any existing pending invites for this email
+    // This allows resending invites with fresh tokens and extended expiry
+    await prisma.projectInvite.deleteMany({
       where: {
         projectId: id,
         email,
         status: 'pending',
-        expiresAt: {
-          gt: new Date(),
-        },
       },
     });
-
-    if (existingInvite) {
-      return NextResponse.json(
-        { error: 'Invite already sent to this email' },
-        { status: 400 }
-      );
-    }
 
     // Find receiver by email
     const receiver = await prisma.user.findUnique({
@@ -139,10 +131,23 @@ export async function POST(
       },
     });
 
-    // TODO: Send email notification with invite link
-    // const inviteLink = `${process.env.NEXT_PUBLIC_APP_URL}/invite/${token}`;
+    // Send email invitation
+    const inviteLink = `${process.env.NEXT_PUBLIC_APP_URL}/invite/${token}`;
+    const emailResult = await sendInviteEmail(
+      email,
+      project.name,
+      user.name || user.email,
+      token,
+      inviteLink
+    );
 
-    return NextResponse.json({ invite }, { status: 201 });
+    return NextResponse.json({
+      invite,
+      emailSent: emailResult.success,
+      message: emailResult.success
+        ? 'Invitation sent successfully'
+        : 'Invitation created but email could not be sent. Email service may not be configured.',
+    }, { status: 201 });
   } catch (error) {
     console.error('Error creating invite:', error);
     return NextResponse.json(

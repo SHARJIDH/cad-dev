@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { useCurrentModel } from "@/hooks/use-current-model";
 import {
     Copy,
     Check,
@@ -24,7 +25,7 @@ import { toast } from "sonner";
 import { CadModelViewer } from "@/components/cad-model-viewer";
 import { InputPanel } from "@/components/input-panel";
 import { GenerationProgressIndicator } from "@/components/generation-progress";
-
+import { generatePlaceholderThumbnail } from "@/lib/thumbnail-utils";
 // Message type
 export interface Message {
     id: string;
@@ -39,15 +40,15 @@ import { ViewModeToggle, ViewMode } from "@/components/view-mode-toggle";
 import { FloorPlan2D } from "@/components/floor-plan-2d";
 import { ExportButton } from "@/components/export-button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Bot, User, Eye, Shield, Smartphone } from "lucide-react";
+import { Bot, User, Eye, Smartphone } from "lucide-react";
 import { CostEstimator } from '@/components/cost-estimator';
-import { CodeComplianceChecker } from '@/components/code-compliance-checker';
 import { ARQRCode } from '@/components/ar-qr-code';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useProject } from "@/hooks/use-project";
 import { CreateProjectDialog } from "@/components/create-project-dialog";
 import { InviteMemberDialog } from "@/components/invite-member-dialog";
 import { Project } from "@/types/database";
+import { SaveProjectModal } from "@/components/save-project-modal";
 
 export default function CadGeneratorPage() {
     const searchParams = useSearchParams();
@@ -64,8 +65,11 @@ export default function CadGeneratorPage() {
     const [viewMode, setViewMode] = useState<ViewMode>('3d');
     const [showCodePanel, setShowCodePanel] = useState(false);
     const [showCostEstimator, setShowCostEstimator] = useState(false);
-    const [showComplianceChecker, setShowComplianceChecker] = useState(false);
     const [view2d, setView2d] = useState<'top' | 'front' | 'back' | 'left' | 'right'>('top');
+    const [showSaveModal, setShowSaveModal] = useState(false);
+
+    // Persistent model state across navigation
+    const { model: persistedModel, code: persistedCode, updateModel: updatePersisted, updateCode: updatePersistedCode } = useCurrentModel();
 
     // Database integration
     const { project, addMessage, createVersion, messages, versions } = useProject(currentProjectId);
@@ -90,17 +94,16 @@ export default function CadGeneratorPage() {
         return () => window.removeEventListener('keydown', onKeyDown);
     }, [showCostEstimator]);
 
-    // Close compliance checker on ESC
+    // Restore model state from localStorage when navigating back (if no database project is active)
     useEffect(() => {
-        if (!showComplianceChecker) return;
-        const onKeyDown = (event: KeyboardEvent) => {
-            if (event.key === 'Escape') {
-                setShowComplianceChecker(false);
+        if (!currentProjectId && !generatedModel && persistedModel) {
+            console.log('Restoring model from localStorage:', persistedModel);
+            setGeneratedModel(persistedModel);
+            if (persistedCode) {
+                setGeneratedCode(persistedCode);
             }
-        };
-        window.addEventListener('keydown', onKeyDown);
-        return () => window.removeEventListener('keydown', onKeyDown);
-    }, [showComplianceChecker]);
+        }
+    }, [persistedModel, persistedCode, currentProjectId, generatedModel]);
 
     // Load conversation history and latest model when project data is available
     useEffect(() => {
@@ -286,8 +289,15 @@ export default function CadGeneratorPage() {
                             if (data.modelData) {
                                 setGeneratedModel(data.modelData);
                                 setGeneratedCode(data.code || '');
+                                updatePersisted(data.modelData);
+                                updatePersistedCode(data.code || '');
                                 addToConversation('assistant', 'Design generated successfully!', data.modelData);
                                 toast.success('CAD model generated!');
+                                
+                                // Show save modal after generation completes
+                                if (!currentProjectId) {
+                                    setTimeout(() => setShowSaveModal(true), 500);
+                                }
                             }
                         } else if (message.type === 'error') {
                             throw new Error((message.data as any).error);
@@ -300,8 +310,11 @@ export default function CadGeneratorPage() {
             toast.error(`Failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
             // Fallback to mock data
             const mockData = generateMockModelData(prompt);
+            const mockCode = generateMockCode(prompt);
             setGeneratedModel(mockData);
-            setGeneratedCode(generateMockCode(prompt));
+            setGeneratedCode(mockCode);
+            updatePersisted(mockData);
+            updatePersistedCode(mockCode);
             addToConversation('assistant', 'Generated model (using fallback data)', mockData);
         } finally {
             setIsGenerating(false);
@@ -317,18 +330,59 @@ export default function CadGeneratorPage() {
 
         try {
             if (currentProjectId && createVersion) {
-                // Save as new version in existing project
+                // Generate thumbnail from the model data
+                const roomCount = generatedModel?.rooms?.length || 1;
+                const thumbnail = generatePlaceholderThumbnail(roomCount);
+
+                // Save as new version in existing project with thumbnail
                 await createVersion({
                     name: `Version ${(project?.versions?.length || 0) + 1}`,
                     description: `Auto-saved version`,
                     modelData: generatedModel,
+                    thumbnailUrl: thumbnail,
                 });
                 toast.success("New version saved!");
             } else {
-                // No project selected - prompt user to create one
-                toast.info("Create a project first to save your work!", {
-                    description: "Click 'New Project' button to get started"
+                // No project selected - show the save modal
+                setShowSaveModal(true);
+            }
+        } catch (error) {
+            console.error('Failed to save project:', error);
+            toast.error('Failed to save project');
+        }
+    };
+
+    const handleSaveProjectFromModal = async (projectData: {
+        name: string;
+        description: string;
+        isPublic: boolean;
+    }) => {
+        try {
+            if (!currentProjectId) {
+                // Create new project WITHOUT thumbnail
+                // Thumbnail will be set when content is first saved/generated
+                const response = await fetch('/api/projects', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        name: projectData.name,
+                        description: projectData.description,
+                        isPublic: projectData.isPublic,
+                    }),
                 });
+
+                if (!response.ok) {
+                    throw new Error('Failed to create project');
+                }
+
+                const { project } = await response.json();
+                setCurrentProjectId(project.id);
+                
+                // Optionally set URL to include projectId
+                router.push(`/cad-generator?projectId=${project.id}`);
+                
+                toast.success(`Project "${projectData.name}" saved successfully!`);
+                setShowSaveModal(false);
             }
         } catch (error) {
             console.error('Failed to save project:', error);
@@ -458,17 +512,17 @@ window.addEventListener('resize', () => {
     };
 
     return (
-        <div className="h-[calc(100vh-5rem)] flex overflow-hidden bg-gray-50">
+        <div className="h-[calc(100vh-5rem)] flex overflow-hidden bg-muted/50 dark:bg-dark-bg transition-colors duration-300">
             {/* ═══════ LEFT PANEL — Chat Interface ═══════ */}
-            <div className="w-[420px] min-w-[360px] flex flex-col border-r border-gray-200/80 bg-white z-10">
+            <div className="w-[420px] min-w-[360px] flex flex-col border-r border-border bg-card dark:bg-dark-surface z-10">
                 {/* Panel header */}
-                <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-100 bg-gradient-to-r from-purple-50/60 to-blue-50/60">
-                    <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-purple-600 to-blue-600 flex items-center justify-center shadow-lg shadow-purple-500/25">
+                <div className="flex items-center gap-3 px-4 py-3 border-b border-border bg-gradient-to-r from-orange-50/60 to-amber-50/60 dark:from-dark-accent dark:to-dark-surface">
+                    <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-orange-500 to-amber-500 flex items-center justify-center shadow-lg shadow-orange-500/25">
                         <Sparkles className="h-4 w-4 text-white" />
                     </div>
                     <div className="flex-1">
-                        <h2 className="text-sm font-bold text-gray-900 tracking-tight">AI Design Chat</h2>
-                        <p className="text-[10px] text-gray-400 leading-tight">
+                        <h2 className="text-sm font-bold text-foreground tracking-tight">AI Design Chat</h2>
+                        <p className="text-[10px] text-muted-foreground leading-tight">
                             {project ? project.name : 'Design, refine, and iterate'}
                         </p>
                     </div>
@@ -489,11 +543,11 @@ window.addEventListener('resize', () => {
                 <ScrollArea className="flex-1 p-4">
                     {conversationHistory.length === 0 ? (
                         <div className="text-center py-12">
-                            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-100 to-blue-100 flex items-center justify-center mx-auto mb-3">
-                                <Bot className="h-6 w-6 text-purple-400" />
+                            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-orange-100 to-amber-100 dark:from-orange-500/20 dark:to-amber-500/20 flex items-center justify-center mx-auto mb-3">
+                                <Bot className="h-6 w-6 text-orange-500" />
                             </div>
-                            <p className="text-sm text-gray-500 mb-1">Start a conversation</p>
-                            <p className="text-xs text-gray-400">
+                            <p className="text-sm text-muted-foreground mb-1">Start a conversation</p>
+                            <p className="text-xs text-muted-foreground">
                                 Describe your design or refine existing ones
                             </p>
                         </div>
@@ -507,11 +561,11 @@ window.addEventListener('resize', () => {
                                     }`}
                                 >
                                     <Avatar className="h-8 w-8 flex-shrink-0">
-                                        <AvatarFallback className={message.role === 'user' ? 'bg-purple-100' : 'bg-blue-100'}>
+                                        <AvatarFallback className={message.role === 'user' ? 'bg-orange-100 dark:bg-orange-500/20' : 'bg-amber-100 dark:bg-amber-500/20'}>
                                             {message.role === 'user' ? (
-                                                <User className="h-4 w-4 text-purple-600" />
+                                                <User className="h-4 w-4 text-orange-500" />
                                             ) : (
-                                                <Bot className="h-4 w-4 text-blue-600" />
+                                                <Bot className="h-4 w-4 text-amber-500" />
                                             )}
                                         </AvatarFallback>
                                     </Avatar>
@@ -519,8 +573,8 @@ window.addEventListener('resize', () => {
                                         <div
                                             className={`rounded-2xl px-4 py-2.5 max-w-[85%] ${
                                                 message.role === 'user'
-                                                    ? 'bg-gradient-to-r from-purple-600 to-blue-600 text-white ml-auto'
-                                                    : 'bg-gray-100 text-gray-800'
+                                                    ? 'bg-gradient-to-r from-orange-500 to-amber-500 text-white ml-auto'
+                                                    : 'bg-muted text-foreground'
                                             }`}
                                         >
                                             <p className="text-sm leading-relaxed whitespace-pre-wrap">
@@ -567,10 +621,10 @@ window.addEventListener('resize', () => {
                     className="absolute inset-0"
                     style={{
                         backgroundImage: `
-                            linear-gradient(rgba(139, 92, 246, 0.06) 1px, transparent 1px),
-                            linear-gradient(90deg, rgba(139, 92, 246, 0.06) 1px, transparent 1px),
-                            linear-gradient(rgba(139, 92, 246, 0.03) 1px, transparent 1px),
-                            linear-gradient(90deg, rgba(139, 92, 246, 0.03) 1px, transparent 1px)
+                            linear-gradient(rgba(249, 115, 22, 0.06) 1px, transparent 1px),
+                            linear-gradient(90deg, rgba(249, 115, 22, 0.06) 1px, transparent 1px),
+                            linear-gradient(rgba(249, 115, 22, 0.03) 1px, transparent 1px),
+                            linear-gradient(90deg, rgba(249, 115, 22, 0.03) 1px, transparent 1px)
                         `,
                         backgroundSize: '100px 100px, 100px 100px, 20px 20px, 20px 20px',
                     }}
@@ -579,28 +633,31 @@ window.addEventListener('resize', () => {
                 {/* Canvas content */}
                 <div className="relative z-10 h-full flex flex-col">
                     {/* Toolbar strip */}
-                    <div className="flex items-center justify-between px-4 py-2.5 bg-white/90 backdrop-blur-sm border-b border-gray-200/60">
+                    <div className="flex items-center justify-between px-4 py-2.5 bg-card/90 dark:bg-dark-surface/90 backdrop-blur-sm border-b border-border">
                         <div className="flex items-center gap-3">
-                            <h1 className="text-base font-bold tracking-tight bg-gradient-to-r from-purple-600 via-violet-500 to-blue-600 bg-clip-text text-transparent">
+                            <h1 className="text-base font-bold tracking-tight bg-gradient-to-r from-orange-500 via-orange-400 to-amber-500 bg-clip-text text-transparent">
                                 Workspace
                             </h1>
                             {generatedModel && (
                                 <div className="flex items-center gap-2">
                                     <ViewModeToggle mode={viewMode} onModeChange={setViewMode} />
-                                    {viewMode === '2d' && (
-                                        <Select value={view2d} onValueChange={(value) => setView2d(value as any)}>
-                                            <SelectTrigger className="ml-2 w-[120px] text-xs">
-                                                <SelectValue placeholder="Select view" />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="top">Top</SelectItem>
-                                                <SelectItem value="front">Front</SelectItem>
-                                                <SelectItem value="back">Back</SelectItem>
-                                                <SelectItem value="left">Left</SelectItem>
-                                                <SelectItem value="right">Right</SelectItem>
-                                            </SelectContent>
-                                        </Select>
-                                    )}
+                                    {/* Always reserve space for the 2D view selector to prevent alignment shift */}
+                                    <div className="w-[120px]">
+                                        {viewMode === '2d' && (
+                                            <Select value={view2d} onValueChange={(value) => setView2d(value as any)}>
+                                                <SelectTrigger className="w-full text-xs">
+                                                    <SelectValue placeholder="Select view" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="top">Top</SelectItem>
+                                                    <SelectItem value="front">Front</SelectItem>
+                                                    <SelectItem value="back">Back</SelectItem>
+                                                    <SelectItem value="left">Left</SelectItem>
+                                                    <SelectItem value="right">Right</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        )}
+                                    </div>
                                 </div>
                             )}
                         </div>
@@ -611,7 +668,7 @@ window.addEventListener('resize', () => {
                                     <Button
                                         size="sm"
                                         variant="outline"
-                                        className="h-8 text-xs gap-1.5 border-emerald-200 hover:bg-emerald-50"
+                                        className="h-8 text-xs gap-1.5 border-orange-200 dark:border-dark-border hover:bg-orange-50 dark:hover:bg-dark-accent"
                                         onClick={() => setShowCostEstimator(!showCostEstimator)}
                                     >
                                         <DollarSign className="h-3.5 w-3.5" />
@@ -620,16 +677,7 @@ window.addEventListener('resize', () => {
                                     <Button
                                         size="sm"
                                         variant="outline"
-                                        className="h-8 text-xs gap-1.5 border-blue-200 hover:bg-blue-50"
-                                        onClick={() => setShowComplianceChecker(!showComplianceChecker)}
-                                    >
-                                        <Shield className="h-3.5 w-3.5" />
-                                        Compliance
-                                    </Button>
-                                    <Button
-                                        size="sm"
-                                        variant="outline"
-                                        className="h-8 text-xs gap-1.5 border-violet-200 hover:bg-violet-50"
+                                        className="h-8 text-xs gap-1.5 border-amber-200 dark:border-dark-border hover:bg-amber-50 dark:hover:bg-dark-accent"
                                         onClick={handleOpenInteriorDesigner}
                                     >
                                         <Sofa className="h-3.5 w-3.5" />
@@ -643,24 +691,13 @@ window.addEventListener('resize', () => {
                                     />
                                     <Button
                                         size="sm"
-                                        className="h-8 text-xs gap-1.5 bg-gradient-to-r from-purple-600 to-blue-600 text-white"
+                                        className="h-8 text-xs gap-1.5 bg-gradient-to-r from-orange-500 to-amber-500 text-white"
                                         onClick={handleSaveAsProject}
                                     >
                                         <FolderPlus className="h-3.5 w-3.5" />
                                         {currentProjectId ? 'Update' : 'Save'}
                                     </Button>
                                 </>
-                            )}
-                            {generatedCode && (
-                                <Button
-                                    variant={showCodePanel ? "secondary" : "outline"}
-                                    size="sm"
-                                    className="h-8 text-xs gap-1.5"
-                                    onClick={() => setShowCodePanel(!showCodePanel)}
-                                >
-                                    <Code className="h-3.5 w-3.5" />
-                                    {showCodePanel ? 'Hide Code' : 'Show Code'}
-                                </Button>
                             )}
                         </div>
                     </div>
@@ -686,25 +723,44 @@ window.addEventListener('resize', () => {
                         ) : (
                             <div className="absolute inset-0 flex items-center justify-center">
                                 <div className="text-center max-w-md px-4">
-                                    <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-purple-100 to-blue-100 flex items-center justify-center mx-auto mb-5">
-                                        <Wand2 className="h-8 w-8 text-purple-400" />
+                                    <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-orange-100 to-amber-100 dark:from-orange-500/20 dark:to-amber-500/20 flex items-center justify-center mx-auto mb-5">
+                                        <Wand2 className="h-8 w-8 text-orange-400" />
                                     </div>
-                                    <h3 className="text-xl font-semibold text-gray-700 mb-2">Ready to Design</h3>
-                                    <p className="text-sm text-gray-500 leading-relaxed mb-6">
+                                    <h3 className="text-xl font-semibold text-foreground mb-2">Ready to Design</h3>
+                                    <p className="text-sm text-muted-foreground leading-relaxed mb-6">
                                         Start chatting with the AI to create your architectural design. You can describe, sketch, or use voice input.
                                     </p>
-                                    <div className="flex items-center justify-center gap-3 text-xs text-gray-400">
-                                        <span className="flex items-center gap-1.5 bg-purple-50 px-3 py-1.5 rounded-full">
-                                            <span className="w-2 h-2 rounded-full bg-purple-400" />Text
+                                    <div className="flex items-center justify-center gap-3 text-xs text-muted-foreground">
+                                        <span className="flex items-center gap-1.5 bg-orange-50 dark:bg-orange-500/20 px-3 py-1.5 rounded-full">
+                                            <span className="w-2 h-2 rounded-full bg-orange-400" />Text
                                         </span>
-                                        <span className="flex items-center gap-1.5 bg-blue-50 px-3 py-1.5 rounded-full">
-                                            <span className="w-2 h-2 rounded-full bg-blue-400" />Sketch
+                                        <span className="flex items-center gap-1.5 bg-amber-50 dark:bg-amber-500/20 px-3 py-1.5 rounded-full">
+                                            <span className="w-2 h-2 rounded-full bg-amber-400" />Sketch
                                         </span>
-                                        <span className="flex items-center gap-1.5 bg-violet-50 px-3 py-1.5 rounded-full">
-                                            <span className="w-2 h-2 rounded-full bg-violet-400" />Voice
+                                        <span className="flex items-center gap-1.5 bg-yellow-50 dark:bg-yellow-500/20 px-3 py-1.5 rounded-full">
+                                            <span className="w-2 h-2 rounded-full bg-yellow-400" />Voice
                                         </span>
                                     </div>
                                 </div>
+                            </div>
+                        )}
+                        
+                        {/* Show Code Floating Button - Bottom Right */}
+                        {generatedCode && (
+                            <div className="fixed bottom-8 right-8 z-50">
+                                <Button
+                                    variant={showCodePanel ? "default" : "outline"}
+                                    size="default"
+                                    className={`font-semibold border-2 transition-all shadow-2xl gap-2 px-6 py-2 text-base ${
+                                      showCodePanel 
+                                        ? 'bg-gradient-to-r from-orange-500 to-amber-500 text-white border-orange-600 shadow-orange-500/60' 
+                                        : 'border-orange-400 text-orange-600 hover:bg-orange-50 dark:hover:bg-dark-accent hover:border-orange-500 shadow-gray-400/60'
+                                    }`}
+                                    onClick={() => setShowCodePanel(!showCodePanel)}
+                                >
+                                    <Code className="h-5 w-5" />
+                                    {showCodePanel ? 'Hide Code' : '<> Show Code'}
+                                </Button>
                             </div>
                         )}
                     </div>
@@ -713,11 +769,11 @@ window.addEventListener('resize', () => {
 
             {/* ═══════ RIGHT PANEL — Code (Toggleable) ═══════ */}
             {showCodePanel && generatedCode && (
-                <div className="w-[400px] min-w-[350px] flex flex-col border-l border-gray-200/80 bg-gray-950 z-10">
+                <div className="w-[400px] min-w-[350px] flex flex-col border-l border-border bg-gray-950 z-10">
                     {/* Panel header */}
                     <div className="flex items-center justify-between px-4 py-3 border-b border-gray-800">
                         <div className="flex items-center gap-2">
-                            <Code className="h-4 w-4 text-purple-400" />
+                            <Code className="h-4 w-4 text-orange-400" />
                             <span className="text-sm font-semibold text-gray-200">Three.js Code</span>
                         </div>
                         <div className="flex items-center gap-1.5">
@@ -742,10 +798,11 @@ window.addEventListener('resize', () => {
                             <Button
                                 variant="ghost"
                                 size="sm"
-                                className="h-7 w-7 p-0 text-gray-500 hover:text-white hover:bg-gray-800"
+                                className="h-7 w-7 p-0 text-gray-400 hover:text-white hover:bg-gray-800 transition-colors"
                                 onClick={() => setShowCodePanel(false)}
+                                title="Close code panel"
                             >
-                                <Shrink className="h-3.5 w-3.5" />
+                                <X className="h-4 w-4" />
                             </Button>
                         </div>
                     </div>
@@ -807,75 +864,16 @@ window.addEventListener('resize', () => {
             )}
 
             {/* Code Compliance Checker Panel */}
-            {showComplianceChecker && generatedModel && (
-                <>
-                    <div
-                        className="fixed inset-0 z-20"
-                        onClick={() => setShowComplianceChecker(false)}
-                    />
-                    <div
-                        className="fixed right-0 top-16 h-[calc(100vh-4rem)] w-[26rem] max-w-[95vw] bg-white border-l border-gray-200 shadow-2xl flex flex-col z-30 pointer-events-auto overflow-hidden"
-                        onClick={(event) => event.stopPropagation()}
-                    >
-                        <div className="p-4 border-b border-gray-200 flex items-center justify-between bg-white sticky top-0 z-10">
-                            <h3 className="font-semibold text-gray-900">🛡️ Code Compliance</h3>
-                            <Button
-                                variant="ghost"
-                                size="sm"
-                                className="hover:bg-gray-100 pointer-events-auto z-40"
-                                onMouseDown={(event) => {
-                                    event.preventDefault();
-                                    event.stopPropagation();
-                                    setShowComplianceChecker(false);
-                                }}
-                                onClick={(event) => {
-                                    event.preventDefault();
-                                    event.stopPropagation();
-                                    setShowComplianceChecker(false);
-                                }}
-                            >
-                                Close
-                            </Button>
-                        </div>
-                        <ScrollArea className="flex-1 p-4">
-                            <CodeComplianceChecker modelData={generatedModel} />
-                            <div className="pt-4">
-                                <Button
-                                    variant="outline"
-                                    className="w-full"
-                                    onClick={() => setShowComplianceChecker(false)}
-                                >
-                                    Close
-                                </Button>
-                            </div>
-                        </ScrollArea>
-                    </div>
-                </>
-            )}
+            {/* REMOVED: Compliance Checker Panel as per feature removal */}
 
-            {/* Code Panel */}
-            {showCodePanel && generatedModel && (
-                <div className="absolute right-0 top-0 h-screen w-96 bg-gray-900 border-l border-gray-800 flex flex-col z-30">
-                    <div className="p-3 border-b border-gray-800 flex items-center justify-between">
-                        <span className="text-sm font-medium text-gray-300">Generated Code</span>
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-gray-400 hover:text-gray-200"
-                            onClick={() => setShowCodePanel(false)}
-                        >
-                            <Shrink className="h-3.5 w-3.5" />
-                        </Button>
-                    </div>
-
-                    <ScrollArea className="flex-1">
-                        <pre ref={codeRef} className="p-4 text-xs font-mono text-gray-300 leading-relaxed">
-                            <code>{generatedCode}</code>
-                        </pre>
-                    </ScrollArea>
-                </div>
-            )}
-
+            {/* Save Project Modal */}
+            <SaveProjectModal
+                open={showSaveModal}
+                onClose={() => setShowSaveModal(false)}
+                onSave={handleSaveProjectFromModal}
+                generatedPrompt={prompt}
+                modelData={generatedModel}
+            />
         </div>
     );
 }

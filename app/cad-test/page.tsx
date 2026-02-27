@@ -43,13 +43,13 @@ export default function CadTestPage() {
     };
 
     return (
-        <div className="container mx-auto py-6 bg-gradient-to-br from-purple-50/30 via-white to-blue-50/30 min-h-screen">
-            <Card className="border-2 border-gray-100 shadow-lg">
-                <CardHeader className="bg-gradient-to-r from-purple-50 to-blue-50 border-b">
-                    <CardTitle className="text-2xl bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">CAD Viewer Test</CardTitle>
+        <div className="container mx-auto py-6 bg-gradient-to-br from-orange-50/30 via-white dark:via-dark-bg to-amber-50/30 dark:from-dark-bg dark:to-dark-surface min-h-screen">
+            <Card className="border-2 border-gray-100 dark:border-dark-border shadow-lg dark:bg-dark-surface">
+                <CardHeader className="bg-gradient-to-r from-orange-50 to-amber-50 dark:from-orange-500/10 dark:to-amber-500/10 border-b dark:border-dark-border">
+                    <CardTitle className="text-2xl bg-gradient-to-r from-orange-600 to-amber-600 bg-clip-text text-transparent">CAD Viewer Test</CardTitle>
                 </CardHeader>
                 <CardContent>
-                    <div className="h-[600px] border rounded-md overflow-hidden">
+                    <div className="h-[600px] border dark:border-dark-border rounded-md overflow-hidden">
                         <CadModelViewer
                             modelData={sampleModelData}
                             settings={viewerSettings}
@@ -60,7 +60,7 @@ export default function CadTestPage() {
                             onClick={() =>
                                 (window.location.href = "/cad-generator")
                             }
-                            className="shadow-lg shadow-purple-500/30 hover:shadow-xl hover:shadow-purple-500/40 transition-all"
+                            className="shadow-lg shadow-orange-500/30 hover:shadow-xl hover:shadow-orange-500/40 transition-all bg-gradient-to-r from-orange-500 to-amber-500 text-white"
                         >
                             Back to CAD Generator
                         </Button>

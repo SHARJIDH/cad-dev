@@ -265,15 +265,15 @@ export function CodeComplianceChecker({ modelData }: CodeComplianceCheckerProps)
 
     return (
         <div className="space-y-4">
-            <Card className="bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-200 p-6">
+            <Card className="bg-gradient-to-br from-orange-50 to-amber-50 dark:from-orange-500/10 dark:to-amber-500/10 border-orange-200 dark:border-orange-500/30 p-6">
                 <div className="space-y-4">
                     <div className="flex items-center gap-2 mb-4">
-                        <Shield className="h-5 w-5 text-blue-600" />
-                        <h3 className="font-semibold text-gray-900">Building Code Compliance</h3>
+                        <Shield className="h-5 w-5 text-orange-600 dark:text-orange-400" />
+                        <h3 className="font-semibold text-gray-900 dark:text-white">Building Code Compliance</h3>
                     </div>
 
                     {/* Overall Score */}
-                    <div className="bg-white rounded-lg p-4 border border-blue-200">
+                    <div className="bg-white dark:bg-dark-surface rounded-lg p-4 border border-orange-200 dark:border-dark-border">
                         <div className="text-center">
                             <div className={`text-4xl font-bold ${getScoreColor(overallScore)}`}>
                                 {getScoreGrade(overallScore)}
@@ -310,7 +310,7 @@ export function CodeComplianceChecker({ modelData }: CodeComplianceCheckerProps)
                     </div>
 
                     {/* Issues List */}
-                    <ScrollArea className="h-[400px] rounded-lg border border-blue-200 bg-white p-4">
+                    <ScrollArea className="h-[400px] rounded-lg border border-orange-200 dark:border-dark-border bg-white dark:bg-dark-surface p-4">
                         <div className="space-y-3">
                             {issues.map((issue, index) => (
                                 <div
@@ -363,7 +363,7 @@ export function CodeComplianceChecker({ modelData }: CodeComplianceCheckerProps)
                         </div>
                     </ScrollArea>
 
-                    <div className="text-xs text-gray-500 bg-blue-50 p-2 rounded">
+                    <div className="text-xs text-gray-500 dark:text-gray-400 bg-orange-50 dark:bg-orange-500/10 p-2 rounded">
                         💡 Based on International Residential Code (IRC). Consult local building department for specific requirements.
                     </div>
                 </div>

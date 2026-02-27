@@ -8,7 +8,6 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
 }
 
 model User {
@@ -39,6 +38,7 @@ model Project {
   ownerId         String
   owner           User      @relation(fields: [ownerId], references: [id], onDelete: Cascade)
   isPublic        Boolean   @default(false)
+  thumbnailUrl    String?   // Latest generated thumbnail
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
   

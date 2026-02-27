@@ -89,12 +89,12 @@ export default function ARViewerPage() {
 
     if (error) {
         return (
-            <div className="min-h-screen bg-gradient-to-br from-purple-50 to-blue-50 flex items-center justify-center p-4">
-                <Card className="p-6 max-w-md">
-                    <h2 className="text-xl font-bold text-red-600 mb-2">Error</h2>
-                    <p className="text-gray-600">{error}</p>
+            <div className="min-h-screen bg-gradient-to-br from-orange-50 to-amber-50 dark:from-dark-bg dark:to-dark-surface flex items-center justify-center p-4">
+                <Card className="p-6 max-w-md dark:bg-dark-surface dark:border-dark-border">
+                    <h2 className="text-xl font-bold text-red-600 dark:text-red-400 mb-2">Error</h2>
+                    <p className="text-gray-600 dark:text-gray-400">{error}</p>
                     <Link href="/cad-generator">
-                        <Button className="mt-4">
+                        <Button className="mt-4 bg-gradient-to-r from-orange-500 to-amber-500 text-white">
                             <ArrowLeft className="h-4 w-4 mr-2" />
                             Back to Generator
                         </Button>
@@ -106,10 +106,10 @@ export default function ARViewerPage() {
 
     if (!modelData || !modelUrl) {
         return (
-            <div className="min-h-screen bg-gradient-to-br from-purple-50 to-blue-50 flex items-center justify-center">
+            <div className="min-h-screen bg-gradient-to-br from-orange-50 to-amber-50 dark:from-dark-bg dark:to-dark-surface flex items-center justify-center">
                 <div className="text-center">
-                    <div className="w-12 h-12 border-4 border-purple-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-                    <p className="text-gray-600">
+                    <div className="w-12 h-12 border-4 border-orange-600 dark:border-orange-400 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                    <p className="text-gray-600 dark:text-gray-400">
                         {isGenerating ? 'Generating 3D model...' : 'Loading AR viewer...'}
                     </p>
                 </div>
@@ -118,9 +118,9 @@ export default function ARViewerPage() {
     }
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-purple-50 to-blue-50">
+        <div className="min-h-screen bg-gradient-to-br from-orange-50 to-amber-50 dark:from-dark-bg dark:to-dark-surface">
             {/* Header */}
-            <div className="bg-white border-b border-gray-200 p-4">
+            <div className="bg-white dark:bg-dark-surface border-b border-gray-200 dark:border-dark-border p-4">
                 <div className="max-w-7xl mx-auto flex items-center justify-between">
                     <Link href="/cad-generator">
                         <Button variant="ghost" size="sm">
@@ -167,7 +167,7 @@ export default function ARViewerPage() {
                                     bottom: '16px',
                                     left: '50%',
                                     transform: 'translateX(-50%)',
-                                    backgroundColor: '#7C3AED',
+                                    backgroundColor: '#F97316',
                                     color: 'white',
                                     padding: '12px 24px',
                                     borderRadius: '8px',
@@ -200,9 +200,9 @@ export default function ARViewerPage() {
                     </div>
 
                     {/* Instructions */}
-                    <div className="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
-                        <h3 className="font-semibold text-blue-900 mb-2">How to use AR:</h3>
-                        <ol className="text-sm text-blue-800 space-y-1 list-decimal list-inside">
+                    <div className="mt-6 bg-orange-50 dark:bg-orange-500/10 border border-orange-200 dark:border-orange-500/30 rounded-lg p-4">
+                        <h3 className="font-semibold text-orange-900 dark:text-orange-300 mb-2">How to use AR:</h3>
+                        <ol className="text-sm text-orange-800 dark:text-orange-400 space-y-1 list-decimal list-inside">
                             <li>Open this page on your smartphone or tablet</li>
                             <li>Tap the "View in AR" button</li>
                             <li>Point your camera at a flat surface (floor, table, ground)</li>
@@ -214,27 +214,27 @@ export default function ARViewerPage() {
                     {/* Model Info */}
                     {modelData && (
                         <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-4">
-                            <div className="bg-gray-50 rounded-lg p-3 text-center">
-                                <div className="text-2xl font-bold text-purple-600">
+                            <div className="bg-gray-50 dark:bg-dark-surface rounded-lg p-3 text-center">
+                                <div className="text-2xl font-bold text-orange-600 dark:text-orange-400">
                                     {modelData.rooms?.length || 0}
                                 </div>
-                                <div className="text-xs text-gray-600">Rooms</div>
+                                <div className="text-xs text-gray-600 dark:text-gray-400">Rooms</div>
                             </div>
-                            <div className="bg-gray-50 rounded-lg p-3 text-center">
-                                <div className="text-2xl font-bold text-purple-600">
+                            <div className="bg-gray-50 dark:bg-dark-surface rounded-lg p-3 text-center">
+                                <div className="text-2xl font-bold text-orange-600 dark:text-orange-400">
                                     {modelData.windows?.length || 0}
                                 </div>
-                                <div className="text-xs text-gray-600">Windows</div>
+                                <div className="text-xs text-gray-600 dark:text-gray-400">Windows</div>
                             </div>
-                            <div className="bg-gray-50 rounded-lg p-3 text-center">
-                                <div className="text-2xl font-bold text-purple-600">
+                            <div className="bg-gray-50 dark:bg-dark-surface rounded-lg p-3 text-center">
+                                <div className="text-2xl font-bold text-orange-600 dark:text-orange-400">
                                     {modelData.doors?.length || 0}
                                 </div>
-                                <div className="text-xs text-gray-600">Doors</div>
+                                <div className="text-xs text-gray-600 dark:text-gray-400">Doors</div>
                             </div>
-                            <div className="bg-gray-50 rounded-lg p-3 text-center">
-                                <div className="text-2xl font-bold text-purple-600">1:1</div>
-                                <div className="text-xs text-gray-600">Scale</div>
+                            <div className="bg-gray-50 dark:bg-dark-surface rounded-lg p-3 text-center">
+                                <div className="text-2xl font-bold text-orange-600 dark:text-orange-400">1:1</div>
+                                <div className="text-xs text-gray-600 dark:text-gray-400">Scale</div>
                             </div>
                         </div>
                     )}

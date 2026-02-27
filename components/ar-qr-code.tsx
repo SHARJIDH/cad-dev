@@ -110,8 +110,8 @@ export function ARQRCode({ modelData }: ARQRCodeProps) {
 
                     {/* Header */}
                     <div className="text-center mb-6">
-                        <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                            <QrCode className="h-6 w-6 text-purple-600" />
+                        <div className="w-12 h-12 bg-orange-100 dark:bg-orange-500/20 rounded-full flex items-center justify-center mx-auto mb-3">
+                            <QrCode className="h-6 w-6 text-orange-600 dark:text-orange-400" />
                         </div>
                         <h3 className="text-xl font-semibold mb-2">View in Augmented Reality</h3>
                         <p className="text-sm text-gray-600">
@@ -120,7 +120,7 @@ export function ARQRCode({ modelData }: ARQRCodeProps) {
                     </div>
 
                     {/* QR Code */}
-                    <div className="bg-white border-4 border-purple-100 rounded-lg p-4 mb-6">
+                    <div className="bg-white dark:bg-dark-surface border-4 border-orange-100 dark:border-orange-500/30 rounded-lg p-4 mb-6">
                         {qrCodeUrl ? (
                             <img
                                 src={qrCodeUrl}
@@ -130,17 +130,17 @@ export function ARQRCode({ modelData }: ARQRCodeProps) {
                         ) : (
                             <div className="aspect-square flex items-center justify-center">
                                 <div className="text-center">
-                                    <div className="w-8 h-8 border-4 border-purple-600 border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
-                                    <p className="text-sm text-gray-500">Generating QR code...</p>
+                                    <div className="w-8 h-8 border-4 border-orange-600 dark:border-orange-400 border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
+                                    <p className="text-sm text-gray-500 dark:text-gray-400">Generating QR code...</p>
                                 </div>
                             </div>
                         )}
                     </div>
 
                     {/* Instructions */}
-                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
-                        <h4 className="text-sm font-semibold text-blue-900 mb-2">📱 Instructions:</h4>
-                        <ol className="text-xs text-blue-800 space-y-1 list-decimal list-inside">
+                    <div className="bg-orange-50 dark:bg-orange-500/10 border border-orange-200 dark:border-orange-500/30 rounded-lg p-3 mb-4">
+                        <h4 className="text-sm font-semibold text-orange-900 dark:text-orange-300 mb-2">📱 Instructions:</h4>
+                        <ol className="text-xs text-orange-800 dark:text-orange-400 space-y-1 list-decimal list-inside">
                             <li>Open your phone camera</li>
                             <li>Point at this QR code</li>
                             <li>Tap the notification to open</li>
@@ -175,9 +175,9 @@ export function ARQRCode({ modelData }: ARQRCodeProps) {
                     </div>
 
                     {/* Direct Link */}
-                    <div className="mt-4 p-3 bg-gray-50 rounded border border-gray-200">
-                        <p className="text-xs text-gray-600 mb-1">Or share this link:</p>
-                        <p className="text-xs text-purple-600 font-mono break-all">
+                    <div className="mt-4 p-3 bg-gray-50 dark:bg-dark-surface rounded border border-gray-200 dark:border-dark-border">
+                        <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Or share this link:</p>
+                        <p className="text-xs text-orange-600 dark:text-orange-400 font-mono break-all">
                             {arUrl}
                         </p>
                     </div>

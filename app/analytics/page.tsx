@@ -61,14 +61,14 @@ export default function ArchitecturalAnalyticsPage() {
     const [dateRange, setDateRange] = useState("last90days");
 
     return (
-        <div className="container mx-auto p-6 space-y-6 bg-gradient-to-br from-purple-50/30 via-white to-blue-50/30 min-h-screen">
+        <div className="container mx-auto p-6 space-y-6 bg-gradient-to-br from-orange-50/30 via-white dark:via-dark-bg to-amber-50/30 dark:from-dark-bg dark:to-dark-surface min-h-screen">
             {/* Header */}
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
-                    <h1 className="text-4xl font-bold tracking-tight bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
+                    <h1 className="text-4xl font-bold tracking-tight bg-gradient-to-r from-orange-600 to-amber-600 bg-clip-text text-transparent">
                         Architectural Analytics
                     </h1>
-                    <p className="text-gray-600 text-lg mt-1">
+                    <p className="text-gray-600 dark:text-gray-400 text-lg mt-1">
                         Track design metrics and building performance
                     </p>
                 </div>
@@ -90,7 +90,7 @@ export default function ArchitecturalAnalyticsPage() {
                         </SelectContent>
                     </Select>
 
-                    <Button variant="outline" className="border-2 hover:bg-purple-50 hover:border-purple-300">
+                    <Button variant="outline" className="border-2 hover:bg-orange-50 dark:hover:bg-orange-500/10 hover:border-orange-300 dark:hover:border-orange-500/50">
                         <Download className="h-4 w-4 mr-2" />
                         Export
                     </Button>

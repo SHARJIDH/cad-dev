@@ -123,53 +123,47 @@ export default function ProjectsPage() {
     };
 
     return (
-        <div className="container mx-auto p-6 space-y-6 bg-gradient-to-br from-purple-50/30 via-white to-blue-50/30 min-h-screen">
+        <div className="container mx-auto p-6 space-y-6 bg-gradient-to-br from-orange-50/30 via-background to-amber-50/30 dark:from-dark-bg dark:via-dark-surface dark:to-dark-bg min-h-screen transition-colors duration-300">
             {/* Header */}
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
                     <div className="flex items-center gap-2 mb-2">
-                        <Sparkles className="h-6 w-6 text-purple-600" />
-                        <h1 className="text-4xl font-bold tracking-tight bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
+                        <Sparkles className="h-6 w-6 text-orange-500" />
+                        <h1 className="text-4xl font-bold tracking-tight bg-gradient-to-r from-orange-500 to-amber-500 bg-clip-text text-transparent">
                             Projects
                         </h1>
                     </div>
-                    <p className="text-gray-600 text-lg">
+                    <p className="text-muted-foreground text-lg">
                         Manage and track your architectural designs
                     </p>
                 </div>
 
                 <div className="flex gap-2">
-                    <Link href="/templates">
-                        <Button variant="outline" className="gap-1 border-2 hover:bg-purple-50 hover:border-purple-300">
-                            <FileText className="h-4 w-4" />
-                            Templates
-                        </Button>
-                    </Link>
                     <Dialog open={createOpen} onOpenChange={setCreateOpen}>
                         <DialogTrigger asChild>
-                            <Button className="gap-1 shadow-lg shadow-purple-500/30 hover:shadow-xl hover:shadow-purple-500/40 transition-all">
+                            <Button className="gap-1 bg-gradient-to-r from-orange-500 to-amber-500 shadow-lg shadow-orange-500/30 hover:shadow-xl hover:shadow-orange-500/40 transition-all">
                                 <Plus className="h-4 w-4" />
                                 New Project
                             </Button>
                         </DialogTrigger>
-                        <DialogContent className="sm:max-w-[500px]">
+                        <DialogContent className="sm:max-w-[500px] dark:bg-dark-surface dark:border-dark-border">
                             <DialogHeader>
-                                <DialogTitle className="text-xl bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">Create New Project</DialogTitle>
+                                <DialogTitle className="text-xl bg-gradient-to-r from-orange-500 to-amber-500 bg-clip-text text-transparent">Create New Project</DialogTitle>
                                 <DialogDescription>Fill in the details to create a new design project.</DialogDescription>
                             </DialogHeader>
                             <div className="space-y-4 py-4">
                                 <div className="space-y-2">
                                     <Label>Project Name *</Label>
-                                    <Input placeholder="Modern Office Building" value={newTitle} onChange={(e) => setNewTitle(e.target.value)} className="border-2 focus:border-purple-300" />
+                                    <Input placeholder="Modern Office Building" value={newTitle} onChange={(e) => setNewTitle(e.target.value)} className="border-2 focus:border-orange-300 dark:focus:border-orange-500/50" />
                                 </div>
                                 <div className="space-y-2">
                                     <Label>Description</Label>
-                                    <Textarea placeholder="Brief description of the project..." value={newDescription} onChange={(e) => setNewDescription(e.target.value)} className="border-2 focus:border-purple-300" />
+                                    <Textarea placeholder="Brief description of the project..." value={newDescription} onChange={(e) => setNewDescription(e.target.value)} className="border-2 focus:border-orange-300 dark:focus:border-orange-500/50" />
                                 </div>
                             </div>
                             <DialogFooter>
                                 <Button variant="outline" onClick={() => setCreateOpen(false)}>Cancel</Button>
-                                <Button onClick={handleCreate} disabled={!newTitle.trim()} className="shadow-lg shadow-purple-500/30">
+                                <Button onClick={handleCreate} disabled={!newTitle.trim()} className="bg-gradient-to-r from-orange-500 to-amber-500 shadow-lg shadow-orange-500/30">
                                     <Plus className="h-4 w-4 mr-1" />
                                     Create Project
                                 </Button>
@@ -182,19 +176,19 @@ export default function ProjectsPage() {
             {/* Search and Filter */}
             <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
                 <div className="relative w-full sm:w-96">
-                    <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                    <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                     <Input
                         type="search"
                         placeholder="Search projects..."
-                        className="pl-9 border-2 focus:border-purple-300"
+                        className="pl-9 border-2 focus:border-orange-300 dark:focus:border-orange-500/50"
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                     />
                 </div>
 
                 <Tabs defaultValue="all" className="w-full sm:w-auto" onValueChange={setActiveFilter}>
-                    <TabsList className="grid grid-cols-1 w-full sm:w-auto bg-white border-2">
-                        <TabsTrigger value="all">All Projects</TabsTrigger>
+                    <TabsList className="grid grid-cols-1 w-full sm:w-auto bg-card dark:bg-dark-surface border-2 border-border">
+                        <TabsTrigger value="all" className="data-[state=active]:bg-orange-50 dark:data-[state=active]:bg-dark-accent data-[state=active]:text-orange-600 dark:data-[state=active]:text-orange-400">All Projects</TabsTrigger>
                     </TabsList>
                 </Tabs>
             </div>
@@ -202,7 +196,7 @@ export default function ProjectsPage() {
             {/* Projects Grid */}
             {isLoading ? (
                 <div className="text-center py-12">
-                    <p className="text-gray-500">Loading projects...</p>
+                    <p className="text-muted-foreground">Loading projects...</p>
                 </div>
             ) : filteredProjects.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -216,14 +210,14 @@ export default function ProjectsPage() {
                 </div>
             ) : (
                 <div className="flex flex-col items-center justify-center py-12 text-center">
-                    <div className="rounded-full bg-purple-100 p-6 mb-4">
-                        <Building2 className="h-10 w-10 text-purple-600" />
+                    <div className="rounded-full bg-orange-100 dark:bg-orange-500/20 p-6 mb-4">
+                        <Building2 className="h-10 w-10 text-orange-500" />
                     </div>
-                    <h3 className="text-xl font-medium mb-2">No projects found</h3>
-                    <p className="text-gray-600 max-w-md">
+                    <h3 className="text-xl font-medium mb-2 text-foreground">No projects found</h3>
+                    <p className="text-muted-foreground max-w-md">
                         Create your first project to get started with AI-powered CAD design.
                     </p>
-                    <Button className="mt-6 gap-1 shadow-lg shadow-purple-500/30" onClick={() => setCreateOpen(true)}>
+                    <Button className="mt-6 gap-1 bg-gradient-to-r from-orange-500 to-amber-500 shadow-lg shadow-orange-500/30" onClick={() => setCreateOpen(true)}>
                         <Plus className="h-4 w-4" />
                         New Project
                     </Button>
@@ -240,6 +234,7 @@ type ProjectCardProps = {
         description?: string | null;
         createdAt: Date | string;
         updatedAt: Date | string;
+        thumbnailUrl?: string | null;
         _count?: {
             messages: number;
             versions: number;
@@ -267,14 +262,22 @@ function ProjectCard({ project, onDelete }: ProjectCardProps) {
 
     return (
         <Link href={`/cad-generator?projectId=${project.id}`}>
-            <Card className="overflow-hidden flex flex-col h-full group hover:shadow-2xl hover:-translate-y-1 transition-all border-2 border-gray-100 hover:border-purple-200 cursor-pointer">
-                <div className="aspect-video relative bg-gradient-to-br from-purple-100 to-blue-100 flex items-center justify-center">
-                    <Building2 className="h-16 w-16 text-purple-400" />
+            <Card className="overflow-hidden flex flex-col h-full group hover:shadow-2xl hover:-translate-y-1 transition-all border-2 border-border hover:border-orange-200 dark:hover:border-orange-500/30 cursor-pointer dark:bg-dark-surface">
+                <div className="aspect-video relative bg-gradient-to-br from-orange-100 to-amber-100 dark:from-orange-500/20 dark:to-amber-500/20 flex items-center justify-center overflow-hidden">
+                    {project.thumbnailUrl ? (
+                        <img 
+                            src={project.thumbnailUrl} 
+                            alt={project.name}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        />
+                    ) : (
+                        <Building2 className="h-16 w-16 text-orange-400 dark:text-orange-500/50" />
+                    )}
                 </div>
                 <CardHeader>
                     <div className="flex justify-between items-start">
                         <div className="flex-1">
-                            <CardTitle className="text-lg mb-1 group-hover:text-purple-600 transition-colors">
+                            <CardTitle className="text-lg mb-1 group-hover:text-orange-500 transition-colors">
                                 {project.name}
                             </CardTitle>
                             <CardDescription className="line-clamp-2">
@@ -287,7 +290,7 @@ function ProjectCard({ project, onDelete }: ProjectCardProps) {
                                     <MoreVertical className="h-4 w-4" />
                                 </Button>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" onClick={(e) => e.preventDefault()}>
+                            <DropdownMenuContent align="end" onClick={(e) => e.preventDefault()} className="dark:bg-dark-surface dark:border-dark-border">
                                 <DropdownMenuItem onClick={(e) => {
                                     e.preventDefault();
                                     e.stopPropagation();
@@ -303,12 +306,12 @@ function ProjectCard({ project, onDelete }: ProjectCardProps) {
                 <CardContent className="flex-1">
                     <div className="space-y-3">
                         {project.owner && (
-                            <div className="flex items-center text-sm text-gray-600">
+                            <div className="flex items-center text-sm text-muted-foreground">
                                 <Users className="h-4 w-4 mr-2" />
                                 <span>{project.owner.name || project.owner.email}</span>
                             </div>
                         )}
-                        <div className="flex items-center gap-4 text-sm text-gray-600">
+                        <div className="flex items-center gap-4 text-sm text-muted-foreground">
                             {project._count && (
                                 <>
                                     <div className="flex items-center gap-1">
@@ -325,7 +328,7 @@ function ProjectCard({ project, onDelete }: ProjectCardProps) {
                     </div>
                 </CardContent>
                 <CardFooter className="pt-0">
-                    <div className="flex items-center text-sm text-gray-500">
+                    <div className="flex items-center text-sm text-muted-foreground">
                         <Calendar className="h-4 w-4 mr-2" />
                         Updated {formattedDate}
                     </div>

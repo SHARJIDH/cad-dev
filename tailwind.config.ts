@@ -53,6 +53,25 @@ const config = {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+        // Custom Orange Theme Colors
+        orange: {
+          50: "#FFF7ED",
+          100: "#FFEDD5",
+          200: "#FED7AA",
+          300: "#FDBA74",
+          400: "#FB923C",
+          500: "#F97316",
+          600: "#EA580C",
+          700: "#C2410C",
+          800: "#9A3412",
+          900: "#7C2D12",
+          950: "#431407",
+        },
+        // Dark mode surface colors
+        "dark-bg": "#0F0A07",
+        "dark-surface": "#1A120D",
+        "dark-border": "#3F2A1A",
+        "dark-accent": "#3A1F0F",
       },
       borderRadius: {
         lg: "var(--radius)",

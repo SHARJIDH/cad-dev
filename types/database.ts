@@ -4,6 +4,7 @@ export interface Project {
   description?: string;
   ownerId: string;
   isPublic: boolean;
+  thumbnailUrl?: string;
   createdAt: Date;
   updatedAt: Date;
   members?: ProjectMember[];

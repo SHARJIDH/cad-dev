@@ -433,7 +433,7 @@ export function InputPanel({ onGenerateModel, isGenerating, hasConversationHisto
     return (
         <div className="flex flex-col h-full">
             {/* Compact tab pills */}
-            <div className="flex gap-1 mb-3 p-1 rounded-lg bg-gray-100/80">
+            <div className="flex gap-1 mb-3 p-1 rounded-lg bg-muted/80 dark:bg-dark-accent">
                 {[
                     { key: "text", icon: <Wand2 className="h-3 w-3" />, label: "Text" },
                     { key: "sketch", icon: <Pencil className="h-3 w-3" />, label: "Sketch" },
@@ -443,8 +443,8 @@ export function InputPanel({ onGenerateModel, isGenerating, hasConversationHisto
                     <button
                         key={tab.key}
                         className={`flex-1 flex items-center justify-center gap-1 py-1.5 rounded-md text-[11px] font-medium transition-all ${activeTab === tab.key
-                            ? "bg-white text-purple-700 shadow-sm"
-                            : "text-gray-500 hover:text-gray-700"
+                            ? "bg-card dark:bg-dark-surface text-orange-600 dark:text-orange-400 shadow-sm"
+                            : "text-muted-foreground hover:text-foreground"
                             }`}
                         onClick={() => setActiveTab(tab.key as any)}
                     >
@@ -459,7 +459,7 @@ export function InputPanel({ onGenerateModel, isGenerating, hasConversationHisto
                 <div className="flex-grow flex flex-col gap-3">
                     <Textarea
                         placeholder="Describe your building or space in detail..."
-                        className="flex-grow resize-none min-h-[140px] text-sm border-gray-200 focus:border-purple-300 focus:ring-purple-200/50 rounded-lg placeholder:text-gray-400"
+                        className="flex-grow resize-none min-h-[140px] text-sm border-border focus:border-orange-300 dark:focus:border-orange-500/50 focus:ring-orange-200/50 rounded-lg placeholder:text-muted-foreground"
                         value={textPrompt}
                         onChange={handleTextChange}
                     />
@@ -467,12 +467,12 @@ export function InputPanel({ onGenerateModel, isGenerating, hasConversationHisto
                     {/* Example prompts */}
                     {!hasConversationHistory && !hasPrompted && textPrompt.trim().length === 0 && (
                         <div>
-                            <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-2">Try an example</p>
+                            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">Try an example</p>
                             <div className="space-y-1.5">
                                 {examplePrompts.map((example, index) => (
                                     <button
                                         key={index}
-                                        className="w-full text-left text-xs p-2 rounded-lg border border-gray-100 bg-gray-50/50 text-gray-600 hover:bg-purple-50 hover:border-purple-200 hover:text-purple-700 transition-all leading-relaxed group"
+                                        className="w-full text-left text-xs p-2 rounded-lg border border-border bg-muted/50 text-muted-foreground hover:bg-orange-50 dark:hover:bg-dark-accent hover:border-orange-200 dark:hover:border-orange-500/30 hover:text-orange-700 dark:hover:text-orange-400 transition-all leading-relaxed group"
                                         onClick={() => handleExampleClick(example)}
                                     >
                                         <span className="opacity-80 group-hover:opacity-100">{example}</span>
@@ -534,7 +534,7 @@ export function InputPanel({ onGenerateModel, isGenerating, hasConversationHisto
                         {!isRecording ? (
                             <button
                                 onClick={startRecording}
-                                className="w-16 h-16 rounded-full bg-gradient-to-br from-purple-500 to-blue-500 text-white flex items-center justify-center shadow-lg shadow-purple-500/30 hover:shadow-xl hover:shadow-purple-500/40 transition-all hover:scale-105"
+                                className="w-16 h-16 rounded-full bg-gradient-to-br from-orange-500 to-amber-500 text-white flex items-center justify-center shadow-lg shadow-orange-500/30 hover:shadow-xl hover:shadow-orange-500/40 transition-all hover:scale-105"
                             >
                                 <Mic className="h-6 w-6" />
                             </button>
@@ -610,7 +610,7 @@ export function InputPanel({ onGenerateModel, isGenerating, hasConversationHisto
                         )}
                         {isCameraActive && (
                             <div className="flex gap-1.5">
-                                <Button onClick={capturePhoto} size="sm" className="h-6 text-[10px] px-2 bg-purple-600">
+                                <Button onClick={capturePhoto} size="sm" className="h-6 text-[10px] px-2 bg-orange-500 hover:bg-orange-600">
                                     <Camera className="h-3 w-3 mr-1" />
                                     Capture
                                 </Button>
@@ -650,29 +650,29 @@ export function InputPanel({ onGenerateModel, isGenerating, hasConversationHisto
             )}
 
             {/* Input summary chips + Generate button */}
-            <div className="mt-3 pt-3 border-t border-gray-100">
+            <div className="mt-3 pt-3 border-t border-border">
                 {(textPrompt || speechTranscript || photoData || activeTab === "sketch") && (
                     <div className="flex flex-wrap gap-1.5 mb-3">
                         {textPrompt && (
-                            <span className="bg-purple-100 text-purple-700 text-[10px] py-0.5 px-2 rounded-full flex items-center gap-1">
+                            <span className="bg-orange-100 dark:bg-orange-500/20 text-orange-700 dark:text-orange-400 text-[10px] py-0.5 px-2 rounded-full flex items-center gap-1">
                                 <Wand2 className="h-2.5 w-2.5" /> Text
                                 <Check className="h-2.5 w-2.5 text-green-600" />
                             </span>
                         )}
                         {activeTab === "sketch" && (
-                            <span className="bg-blue-100 text-blue-700 text-[10px] py-0.5 px-2 rounded-full flex items-center gap-1">
+                            <span className="bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-400 text-[10px] py-0.5 px-2 rounded-full flex items-center gap-1">
                                 <Pencil className="h-2.5 w-2.5" /> Sketch
                                 <Check className="h-2.5 w-2.5 text-green-600" />
                             </span>
                         )}
                         {speechTranscript && (
-                            <span className="bg-violet-100 text-violet-700 text-[10px] py-0.5 px-2 rounded-full flex items-center gap-1">
+                            <span className="bg-yellow-100 dark:bg-yellow-500/20 text-yellow-700 dark:text-yellow-400 text-[10px] py-0.5 px-2 rounded-full flex items-center gap-1">
                                 <Mic className="h-2.5 w-2.5" /> Voice
                                 <Check className="h-2.5 w-2.5 text-green-600" />
                             </span>
                         )}
                         {photoData && (
-                            <span className="bg-pink-100 text-pink-700 text-[10px] py-0.5 px-2 rounded-full flex items-center gap-1">
+                            <span className="bg-pink-100 dark:bg-pink-500/20 text-pink-700 dark:text-pink-400 text-[10px] py-0.5 px-2 rounded-full flex items-center gap-1">
                                 <Camera className="h-2.5 w-2.5" /> Photo
                                 <Check className="h-2.5 w-2.5 text-green-600" />
                             </span>
@@ -681,7 +681,7 @@ export function InputPanel({ onGenerateModel, isGenerating, hasConversationHisto
                 )}
 
                 <Button
-                    className="w-full gap-2 bg-gradient-to-r from-purple-600 to-blue-600 text-white shadow-lg shadow-purple-500/20 hover:shadow-xl hover:shadow-purple-500/30 transition-all font-semibold"
+                    className="w-full gap-2 bg-gradient-to-r from-orange-500 to-amber-500 text-white shadow-lg shadow-orange-500/20 hover:shadow-xl hover:shadow-orange-500/30 transition-all font-semibold"
                     onClick={handleSubmit}
                     disabled={
                         isGenerating ||

@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Loader2, Sparkles, Home, Sofa, DollarSign, Palette,  ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
+import { useCurrentModel } from '@/hooks/use-current-model';
 
 interface FurnitureItem {
     name: string;
@@ -29,6 +30,7 @@ interface DesignStyle {
 
 export default function InteriorDesignerPage() {
     const searchParams = useSearchParams();
+    const { model, updateModel } = useCurrentModel();
     const [modelData, setModelData] = useState<any>(null);
     const [selectedRoom, setSelectedRoom] = useState<string>('');
     const [roomType, setRoomType] = useState<string>('living-room');
@@ -37,16 +39,14 @@ export default function InteriorDesignerPage() {
     const [selectedStyle, setSelectedStyle] = useState<DesignStyle | null>(null);
 
     useEffect(() => {
-        // Load model data from localStorage or URL
-        const storedModel = localStorage.getItem('currentModel');
-        if (storedModel) {
-            const data = JSON.parse(storedModel);
-            setModelData(data);
-            if (data.rooms && data.rooms.length > 0) {
-                setSelectedRoom(data.rooms[0].name);
+        // Load model from persistent state
+        if (model) {
+            setModelData(model);
+            if (model.rooms && model.rooms.length > 0) {
+                setSelectedRoom(model.rooms[0].name);
             }
         }
-    }, []);
+    }, [model]);
 
     const generateInteriorDesign = async () => {
         if (!selectedRoom) return;
@@ -76,9 +76,9 @@ export default function InteriorDesignerPage() {
     };
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-purple-50 to-blue-50">
+        <div className="min-h-screen bg-gradient-to-br from-orange-50 to-amber-50 dark:from-dark-bg dark:to-dark-surface">
             {/* Header */}
-            <div className="bg-white border-b border-gray-200 p-4 shadow-sm">
+            <div className="bg-white dark:bg-dark-surface border-b border-gray-200 dark:border-dark-border p-4 shadow-sm">
                 <div className="max-w-7xl mx-auto flex items-center justify-between">
                     <div className="flex items-center gap-4">
                         <Link href="/cad-generator">
@@ -88,11 +88,11 @@ export default function InteriorDesignerPage() {
                             </Button>
                         </Link>
                         <div>
-                            <h1 className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent flex items-center gap-2">
-                                <Sparkles className="h-6 w-6 text-purple-600" />
+                            <h1 className="text-2xl font-bold bg-gradient-to-r from-orange-600 to-amber-600 bg-clip-text text-transparent flex items-center gap-2">
+                                <Sparkles className="h-6 w-6 text-orange-600 dark:text-orange-400" />
                                 AI Interior Designer
                             </h1>
-                            <p className="text-sm text-gray-600">Transform your rooms with AI-powered design suggestions</p>
+                            <p className="text-sm text-gray-600 dark:text-gray-400">Transform your rooms with AI-powered design suggestions</p>
                         </div>
                     </div>
                 </div>
@@ -144,8 +144,8 @@ export default function InteriorDesignerPage() {
 
                                 {/* Room Info */}
                                 {selectedRoom && modelData.rooms.find((r: any) => r.name === selectedRoom) && (
-                                    <div className="bg-purple-50 rounded-lg p-4 space-y-2">
-                                        <h3 className="font-medium text-sm">Room Dimensions</h3>
+                                    <div className="bg-orange-50 dark:bg-orange-500/10 rounded-lg p-4 space-y-2">
+                                        <h3 className="font-medium text-sm dark:text-white">Room Dimensions</h3>
                                         <div className="grid grid-cols-2 gap-2 text-sm">
                                             <div>
                                                 <span className="text-gray-600">Width:</span>
@@ -174,7 +174,7 @@ export default function InteriorDesignerPage() {
                                 <Button 
                                     onClick={generateInteriorDesign}
                                     disabled={isGenerating || !selectedRoom}
-                                    className="w-full bg-gradient-to-r from-purple-600 to-blue-600"
+                                    className="w-full bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white"
                                 >
                                     {isGenerating ? (
                                         <>
@@ -228,10 +228,10 @@ export default function InteriorDesignerPage() {
                                         {designStyles.map((style, index) => (
                                             <Card
                                                 key={index}
-                                                className={`p-4 cursor-pointer transition-all hover:shadow-lg ${
+                                                className={`p-4 cursor-pointer transition-all hover:shadow-lg dark:bg-dark-surface ${
                                                     selectedStyle?.name === style.name
-                                                        ? 'border-2 border-purple-600 shadow-lg'
-                                                        : 'border border-gray-200'
+                                                        ? 'border-2 border-orange-600 dark:border-orange-400 shadow-lg'
+                                                        : 'border border-gray-200 dark:border-dark-border'
                                                 }`}
                                                 onClick={() => setSelectedStyle(style)}
                                             >
@@ -311,7 +311,7 @@ export default function InteriorDesignerPage() {
                                                 ))}
                                                 <div className="flex justify-between items-center pt-3 text-lg font-bold">
                                                     <span>Total Cost</span>
-                                                    <span className="text-purple-600">${selectedStyle.totalCost.toFixed(2)}</span>
+                                                    <span className="text-orange-600 dark:text-orange-400">${selectedStyle.totalCost.toFixed(2)}</span>
                                                 </div>
                                             </div>
                                         </Card>

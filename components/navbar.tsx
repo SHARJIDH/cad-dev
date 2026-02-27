@@ -21,6 +21,8 @@ import {
 import { Wand2, Bell, Search } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
+import { ModeToggle } from "@/components/mode-toggle";
 
 const navItems = [
     { name: "Dashboard", link: "/dashboard" },
@@ -36,19 +38,25 @@ export function AppNavbar() {
     const pathname = usePathname();
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
+    const handleNotificationClick = () => {
+        toast.info("Notifications feature coming soon!", {
+            description: "You have 2 pending notifications"
+        });
+    };
+
     return (
         <Navbar className="top-0">
             {/* Desktop Nav */}
-            <NavBody className="border border-gray-200/60">
+            <NavBody className="border border-orange-200/60 dark:border-dark-border dark:bg-dark-surface/95">
                 {/* Logo */}
                 <Link
                     href="/dashboard"
                     className="relative z-20 mr-4 flex items-center space-x-2 px-2 py-1"
                 >
-                    <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-600 to-blue-600 flex items-center justify-center shadow-lg shadow-purple-500/30">
+                    <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-orange-500 to-amber-500 flex items-center justify-center shadow-lg shadow-orange-500/30">
                         <Wand2 className="h-5 w-5 text-white" />
                     </div>
-                    <span className="font-bold text-lg bg-gradient-to-r from-purple-600 via-violet-500 to-blue-600 bg-clip-text text-transparent tracking-tight">
+                    <span className="font-bold text-lg bg-gradient-to-r from-orange-500 via-orange-400 to-amber-500 bg-clip-text text-transparent tracking-tight">
                         ArcForge
                     </span>
                 </Link>
@@ -56,11 +64,17 @@ export function AppNavbar() {
                 {/* Nav Items */}
                 <NavItems items={navItems} />
 
-                {/* Right Side — Notifications + Auth */}
+                {/* Right Side — Theme Toggle + Notifications + Auth */}
                 <div className="relative z-20 flex items-center gap-2">
-                    <button className="relative p-2 rounded-full hover:bg-purple-50 transition-colors">
-                        <Bell className="h-5 w-5 text-gray-600" />
-                        <span className="absolute -top-0.5 -right-0.5 bg-gradient-to-r from-purple-600 to-blue-600 text-white text-[10px] w-4 h-4 rounded-full flex items-center justify-center font-bold shadow-lg shadow-purple-500/40">
+                    <ModeToggle />
+                    
+                    <button 
+                        onClick={handleNotificationClick}
+                        className="relative p-2 rounded-full hover:bg-orange-50 dark:hover:bg-dark-accent transition-colors group"
+                        title="Notifications"
+                    >
+                        <Bell className="h-5 w-5 text-gray-600 dark:text-gray-400 group-hover:text-orange-500 dark:group-hover:text-orange-400 transition-colors" />
+                        <span className="absolute -top-0.5 -right-0.5 bg-gradient-to-r from-orange-500 to-amber-500 text-white text-[10px] w-4 h-4 rounded-full flex items-center justify-center font-bold shadow-lg shadow-orange-500/40">
                             2
                         </span>
                     </button>
@@ -71,14 +85,14 @@ export function AppNavbar() {
                             appearance={{
                                 elements: {
                                     avatarBox:
-                                        "w-8 h-8 ring-2 ring-purple-200 ring-offset-1",
+                                        "w-8 h-8 ring-2 ring-orange-200 dark:ring-orange-500/30 ring-offset-1",
                                 },
                             }}
                         />
                     </SignedIn>
                     <SignedOut>
                         <SignInButton mode="redirect">
-                            <NavbarButton as="button" variant="gradient" className="!bg-gradient-to-r !from-purple-600 !to-blue-600">
+                            <NavbarButton as="button" variant="gradient" className="!bg-gradient-to-r !from-orange-500 !to-amber-500">
                                 Sign In
                             </NavbarButton>
                         </SignInButton>
@@ -87,20 +101,21 @@ export function AppNavbar() {
             </NavBody>
 
             {/* Mobile Nav */}
-            <MobileNav className="!bg-white/90">
+            <MobileNav className="!bg-white/90 dark:!bg-dark-surface/95">
                 <MobileNavHeader>
                     <Link
                         href="/dashboard"
                         className="flex items-center space-x-2"
                     >
-                        <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-purple-600 to-blue-600 flex items-center justify-center shadow-md">
+                        <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-orange-500 to-amber-500 flex items-center justify-center shadow-md">
                             <Wand2 className="h-4 w-4 text-white" />
                         </div>
-                        <span className="font-bold bg-gradient-to-r from-purple-600 via-violet-500 to-blue-600 bg-clip-text text-transparent tracking-tight">
+                        <span className="font-bold bg-gradient-to-r from-orange-500 via-orange-400 to-amber-500 bg-clip-text text-transparent tracking-tight">
                             ArcForge
                         </span>
                     </Link>
                     <div className="flex items-center gap-2">
+                        <ModeToggle />
                         <SignedIn>
                             <UserButton
                                 afterSignOutUrl="/sign-in"
@@ -121,7 +136,7 @@ export function AppNavbar() {
                 <MobileNavMenu
                     isOpen={isMobileMenuOpen}
                     onClose={() => setIsMobileMenuOpen(false)}
-                    className="!bg-white"
+                    className="!bg-white dark:!bg-dark-surface"
                 >
                     {navItems.map((item) => (
                         <Link
@@ -131,8 +146,8 @@ export function AppNavbar() {
                             className={cn(
                                 "w-full px-4 py-2.5 rounded-lg text-sm font-medium transition-colors",
                                 pathname?.startsWith(item.link)
-                                    ? "bg-purple-50 text-purple-700"
-                                    : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                                    ? "bg-orange-50 dark:bg-dark-accent text-orange-600 dark:text-orange-400"
+                                    : "text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-dark-accent hover:text-gray-900 dark:hover:text-gray-200"
                             )}
                         >
                             {item.name}
@@ -140,7 +155,7 @@ export function AppNavbar() {
                     ))}
                     <SignedOut>
                         <SignInButton mode="redirect">
-                            <button className="w-full mt-2 px-4 py-2.5 rounded-lg text-sm font-medium bg-gradient-to-r from-purple-600 to-blue-600 text-white">
+                            <button className="w-full mt-2 px-4 py-2.5 rounded-lg text-sm font-medium bg-gradient-to-r from-orange-500 to-amber-500 text-white">
                                 Sign In
                             </button>
                         </SignInButton>

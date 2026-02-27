@@ -513,22 +513,22 @@ export function WalkthroughViewer({ modelData, onExit }: WalkthroughViewerProps)
             {/* Instructions overlay */}
             {!isLocked && (
                 <div className="absolute inset-0 flex items-center justify-center bg-black/80 backdrop-blur-sm z-40">
-                    <div className="bg-white rounded-xl p-8 max-w-md text-center space-y-4">
-                        <div className="w-16 h-16 rounded-full bg-purple-100 flex items-center justify-center mx-auto">
-                            <Maximize2 className="h-8 w-8 text-purple-600" />
+                    <div className="bg-white dark:bg-dark-surface rounded-xl p-8 max-w-md text-center space-y-4">
+                        <div className="w-16 h-16 rounded-full bg-orange-100 dark:bg-orange-500/20 flex items-center justify-center mx-auto">
+                            <Maximize2 className="h-8 w-8 text-orange-600 dark:text-orange-400" />
                         </div>
-                        <h2 className="text-2xl font-bold text-gray-900">
+                        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
                             Virtual Walkthrough
                         </h2>
-                        <p className="text-gray-600">
+                        <p className="text-gray-600 dark:text-gray-400">
                             Explore your architectural design in first-person view
                         </p>
-                        <div className="bg-gray-50 rounded-lg p-4 space-y-2 text-left">
+                        <div className="bg-gray-50 dark:bg-dark-accent rounded-lg p-4 space-y-2 text-left">
                             <div className="flex items-start gap-2">
-                                <Info className="h-5 w-5 text-purple-600 flex-shrink-0 mt-0.5" />
+                                <Info className="h-5 w-5 text-orange-600 dark:text-orange-400 flex-shrink-0 mt-0.5" />
                                 <div className="text-sm">
-                                    <p className="font-semibold text-gray-900">Controls:</p>
-                                    <ul className="text-gray-600 space-y-1 mt-1">
+                                    <p className="font-semibold text-gray-900 dark:text-white">Controls:</p>
+                                    <ul className="text-gray-600 dark:text-gray-400 space-y-1 mt-1">
                                         <li>• <kbd className="px-1.5 py-0.5 bg-white border rounded text-xs font-mono">W A S D</kbd> or Arrow keys to move</li>
                                         <li>• <kbd className="px-1.5 py-0.5 bg-white border rounded text-xs font-mono">Mouse</kbd> to look around</li>
                                         <li>• <kbd className="px-1.5 py-0.5 bg-white border rounded text-xs font-mono">ESC</kbd> to pause</li>
@@ -538,7 +538,7 @@ export function WalkthroughViewer({ modelData, onExit }: WalkthroughViewerProps)
                         </div>
                         <Button
                             size="lg"
-                            className="w-full bg-gradient-to-r from-purple-600 to-blue-600"
+                            className="w-full bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white"
                             onClick={handleStartWalkthrough}
                             disabled={!isReady}
                         >

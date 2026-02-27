@@ -24,14 +24,14 @@ export const MovingBorder = ({
     return (
         <Component
             className={cn(
-                "relative inline-flex h-12 overflow-hidden rounded-xl p-[2px] focus:outline-none focus:ring-2 focus:ring-purple-400 focus:ring-offset-2 focus:ring-offset-white",
+                "relative inline-flex h-12 overflow-hidden rounded-xl p-[2px] focus:outline-none focus:ring-2 focus:ring-orange-400 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-dark-bg",
                 containerClassName
             )}
             {...otherProps}
         >
             <span
                 className={cn(
-                    "absolute inset-[-1000%] animate-[spin_2s_linear_infinite] bg-[conic-gradient(from_90deg_at_50%_50%,#9333ea_0%,#3b82f6_50%,#9333ea_100%)]",
+                    "absolute inset-[-1000%] animate-[spin_2s_linear_infinite] bg-[conic-gradient(from_90deg_at_50%_50%,#f97316_0%,#fbbf24_50%,#f97316_100%)]",
                     borderClassName
                 )}
                 style={{

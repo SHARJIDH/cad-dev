@@ -3,48 +3,91 @@
 @tailwind utilities;
 
 @layer base {
+  /* ===== LIGHT MODE ===== */
   :root {
-    /* Clean White Background */
-    --background: 0 0% 100%;
-    --foreground: 222 47% 11%;
+    /* Warm cream background */
+    --background: 40 100% 99%;       /* #FFFDF9 */
+    --foreground: 220 13% 18%;       /* #1F2937 */
 
-    /* Card with subtle shadow */
-    --card: 0 0% 100%;
-    --card-foreground: 222 47% 11%;
+    /* Card/Surface - Pure white */
+    --card: 0 0% 100%;               /* #FFFFFF */
+    --card-foreground: 220 13% 18%;  /* #1F2937 */
 
     /* Popover */
-    --popover: 0 0% 100%;
-    --popover-foreground: 222 47% 11%;
+    --popover: 0 0% 100%;            /* #FFFFFF */
+    --popover-foreground: 220 13% 18%;
 
-    /* Purple Primary - Modern & Premium */
-    --primary: 262 83% 58%;
-    --primary-foreground: 0 0% 100%;
+    /* Primary - Orange */
+    --primary: 25 95% 53%;           /* #F97316 */
+    --primary-foreground: 0 0% 100%; /* White text on orange */
 
-    /* Light Gray Secondary */
-    --secondary: 220 14% 96%;
-    --secondary-foreground: 222 47% 11%;
+    /* Secondary - Amber */
+    --secondary: 30 100% 73%;        /* #FDBA74 */
+    --secondary-foreground: 220 13% 18%;
 
-    /* Muted backgrounds */
-    --muted: 220 14% 96%;
-    --muted-foreground: 215 16% 47%;
+    /* Muted backgrounds - Light warm */
+    --muted: 30 100% 96%;            /* #FFEDD5 - Peach */
+    --muted-foreground: 220 9% 46%;  /* #6B7280 */
 
-    /* Blue Accent */
-    --accent: 217 91% 60%;
-    --accent-foreground: 0 0% 100%;
+    /* Accent - Peach */
+    --accent: 30 100% 96%;           /* #FFEDD5 */
+    --accent-foreground: 220 13% 18%;
 
-    /* Destructive (Red) */
-    --destructive: 0 84% 60%;
+    /* Destructive - Orange-red */
+    --destructive: 0 72% 51%;        /* Red with orange warmth */
     --destructive-foreground: 0 0% 100%;
 
-    /* Borders - Very light */
-    --border: 220 13% 91%;
-    --input: 220 13% 91%;
+    /* Borders - Warm orange */
+    --border: 30 98% 84%;            /* #FED7AA */
+    --input: 30 98% 84%;             /* #FED7AA */
 
-    /* Focus ring - Purple */
-    --ring: 262 83% 58%;
+    /* Focus ring - Orange */
+    --ring: 25 95% 53%;              /* #F97316 */
 
     /* Rounded corners */
     --radius: 0.75rem;
+  }
+
+  /* ===== DARK MODE ===== */
+  .dark {
+    /* Deep warm brown-black background */
+    --background: 20 30% 5%;         /* #0F0A07 */
+    --foreground: 210 20% 98%;       /* #F9FAFB */
+
+    /* Card/Surface - Dark warm brown */
+    --card: 20 25% 8%;               /* #1A120D */
+    --card-foreground: 210 20% 98%; /* #F9FAFB */
+
+    /* Popover */
+    --popover: 20 25% 8%;            /* #1A120D */
+    --popover-foreground: 210 20% 98%;
+
+    /* Primary - Bright Orange */
+    --primary: 27 97% 61%;           /* #FB923C */
+    --primary-foreground: 20 30% 5%; /* Dark text on orange */
+
+    /* Secondary - Amber */
+    --secondary: 30 100% 73%;        /* #FDBA74 */
+    --secondary-foreground: 20 30% 5%;
+
+    /* Muted backgrounds - Deep orange-brown */
+    --muted: 20 40% 15%;             /* #3A1F0F - Deep Orange-Brown */
+    --muted-foreground: 220 9% 84%;  /* #D1D5DB */
+
+    /* Accent - Deep orange-brown */
+    --accent: 20 40% 15%;            /* #3A1F0F */
+    --accent-foreground: 210 20% 98%;
+
+    /* Destructive */
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+
+    /* Borders - Warm brown */
+    --border: 20 33% 17%;            /* #3F2A1A */
+    --input: 20 33% 17%;             /* #3F2A1A */
+
+    /* Focus ring - Bright orange */
+    --ring: 27 97% 61%;              /* #FB923C */
   }
 }
 
@@ -54,7 +97,7 @@
   }
 
   body {
-    @apply bg-white text-foreground;
+    @apply bg-background text-foreground transition-colors duration-300;
   }
 }
 

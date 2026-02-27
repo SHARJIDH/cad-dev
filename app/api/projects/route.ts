@@ -96,7 +96,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { name, description, isPublic } = body;
+    const { name, description, isPublic, thumbnailUrl } = body;
 
     if (!name) {
       return NextResponse.json(
@@ -128,6 +128,7 @@ export async function POST(request: NextRequest) {
         name,
         description,
         isPublic: isPublic ?? false,
+        ...(thumbnailUrl ? { thumbnailUrl } : {}),
         ownerId: user.id,
         members: {
           create: {
