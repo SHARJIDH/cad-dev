@@ -19,7 +19,7 @@ export class DesignerAgent extends BaseAgent {
             const prompt = this.preparePrompt(input.requirements);
 
             // Step 2: Call the LLM to generate a design
-            const llmResponse = await this.callLLM(prompt, 0.4); // Higher temperature for creativity
+            const llmResponse = await this.callLLM(prompt, 0.4, 3000); // Higher temperature for creativity, capped tokens
 
             // Step 3: Parse and validate the design
             const rawDesign = this.safeParseJSON(llmResponse);
@@ -51,7 +51,7 @@ export class DesignerAgent extends BaseAgent {
 
         try {
             const prompt = this.prepareModificationPrompt(input.requirements, input.currentModel);
-            const llmResponse = await this.callLLM(prompt, 0.3); // Lower temperature for consistency
+            const llmResponse = await this.callLLM(prompt, 0.3, 3000); // Lower temperature for consistency, capped tokens
             const modifiedDesign = this.safeParseJSON(llmResponse);
 
             // Ensure the modified design preserves the structure

@@ -34,12 +34,14 @@ export class StreamingOrchestrator {
                 }
             };
 
+            let stepStart = Date.now();
             const interpreterResult = await this.interpreterAgent.execute({
                 prompt,
                 sketchData,
                 conversationHistory,
                 currentModel,
             });
+            console.log(`Interpreter Agent completed in ${Date.now() - stepStart}ms`);
 
             if (interpreterResult.error) {
                 throw new Error(`Interpreter failed: ${interpreterResult.error}`);
@@ -66,11 +68,13 @@ export class StreamingOrchestrator {
                 }
             };
 
+            stepStart = Date.now();
             const designerResult = await this.designerAgent.execute({
                 requirements: interpreterResult.requirements,
                 currentModel: currentModel,
                 isModification: interpreterResult.isModification,
             });
+            console.log(`Designer Agent completed in ${Date.now() - stepStart}ms`);
 
             if (designerResult.error) {
                 throw new Error(`Designer failed: ${designerResult.error}`);
@@ -101,10 +105,12 @@ export class StreamingOrchestrator {
                 }
             };
 
+            stepStart = Date.now();
             const rendererResult = await this.rendererAgent.execute({
                 design: designerResult.design,
                 requirements: interpreterResult.requirements,
             });
+            console.log(`Renderer Agent completed in ${Date.now() - stepStart}ms`);
 
             yield {
                 type: 'progress',

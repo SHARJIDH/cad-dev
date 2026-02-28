@@ -32,9 +32,11 @@ export abstract class BaseAgent {
     // Common method to call Azure OpenAI
     protected async callLLM(
         prompt: string,
-        temperature: number = 0.2
+        temperature: number = 0.2,
+        maxTokens: number = 2000
     ): Promise<string> {
         try {
+            const startTime = Date.now();
             const response = await this.client.chat.completions.create({
                 model: AZURE_SERVICES_CONFIG.openai.deployment,
                 messages: [
@@ -42,7 +44,9 @@ export abstract class BaseAgent {
                     { role: "user", content: prompt },
                 ],
                 temperature,
+                max_tokens: maxTokens,
             });
+            console.log(`${this.name} agent LLM call took ${Date.now() - startTime}ms`);
 
             return response.choices[0].message?.content || "";
         } catch (error) {

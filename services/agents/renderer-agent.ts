@@ -14,7 +14,7 @@ export class RendererAgent extends BaseAgent {
             const prompt = this.preparePrompt(input.design, input.requirements);
 
             // Step 2: Call the LLM to generate Three.js code
-            const code = await this.callLLM(prompt, 0.1); // Lower temperature for code generation
+            const code = await this.callLLM(prompt, 0.1, 3000); // Lower temperature for code generation, capped tokens
 
             // Step 3: Post-process and validate the code
             const enhancedCode = this.enhanceCode(code, input.design);

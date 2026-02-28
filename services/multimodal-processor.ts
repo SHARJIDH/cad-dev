@@ -927,6 +927,11 @@ export class MultimodalProcessor {
         }
 
         return new Promise<string>(async (resolve, reject) => {
+            // Add 12s timeout for the entire recognition
+            const timeout = setTimeout(() => {
+                reject(new Error("Speech recognition timed out after 12 seconds"));
+            }, 12000);
+
             try {
                 const sdk = require("microsoft-cognitiveservices-speech-sdk");
                 
@@ -970,6 +975,7 @@ export class MultimodalProcessor {
                 // Start recognition
                 recognizer.recognizeOnceAsync(
                     (result) => {
+                        clearTimeout(timeout);
                         console.log(`Recognition result - Reason: ${result.reason}, Text: "${result.text}"`);
                         
                         if (result.reason === sdk.ResultReason.RecognizedSpeech && result.text) {

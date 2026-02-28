@@ -55,6 +55,8 @@ export function MultimodalInput({
     const recordingTimerRef = useRef<NodeJS.Timeout | null>(null);
     const mediaRecorderRef = useRef<MediaRecorder | null>(null);
     const audioChunksRef = useRef<Blob[]>([]);
+    const [isProcessingSpeech, setIsProcessingSpeech] = useState(false);
+    const MAX_RECORDING_SECONDS = 30;
 
     // Camera state
     const [isCameraActive, setIsCameraActive] = useState(false);
@@ -121,9 +123,19 @@ export function MultimodalInput({
             setIsRecording(true);
             setRecordingTime(0);
 
-            // Start timer
+            // Start timer with auto-stop at MAX_RECORDING_SECONDS
             recordingTimerRef.current = setInterval(() => {
-                setRecordingTime((prev) => prev + 1);
+                setRecordingTime((prev) => {
+                    if (prev + 1 >= MAX_RECORDING_SECONDS) {
+                        // Auto-stop recording
+                        stopRecording();
+                        toast({
+                            title: "Recording auto-stopped",
+                            description: `Maximum ${MAX_RECORDING_SECONDS}s reached. Processing your speech...`,
+                        });
+                    }
+                    return prev + 1;
+                });
             }, 1000);
 
             toast({
@@ -156,25 +168,33 @@ export function MultimodalInput({
     };
 
     const processAudioRecording = async (audioBlob: Blob) => {
+        setIsProcessingSpeech(true);
         try {
+            const startTime = Date.now();
             // Convert to WAV format for Azure Speech Service
             const wavBlob = await convertToWav(audioBlob);
-            console.log(`Converted audio: ${audioBlob.size} bytes -> ${wavBlob.size} bytes (WAV)`);
+            console.log(`Converted audio: ${audioBlob.size} bytes -> ${wavBlob.size} bytes (WAV) in ${Date.now() - startTime}ms`);
 
-            // Call speech-to-text API
+            // Call speech-to-text API with timeout
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 15000); // 15s timeout
+
             const response = await fetch("/api/speech-to-text", {
                 method: "POST",
                 body: wavBlob,
                 headers: {
                     'Content-Type': 'audio/wav',
                 },
+                signal: controller.signal,
             });
+            clearTimeout(timeoutId);
 
             if (!response.ok) {
                 throw new Error("Failed to process speech");
             }
 
             const data = await response.json();
+            console.log(`Speech-to-text completed in ${Date.now() - startTime}ms`);
             setSpeechTranscript(data.text);
 
             toast({
@@ -183,12 +203,16 @@ export function MultimodalInput({
             });
         } catch (error) {
             console.error("Error processing speech:", error);
+            const isTimeout = error instanceof DOMException && error.name === 'AbortError';
             toast({
-                title: "Speech processing failed",
-                description:
-                    "Could not convert audio to text. Please try again.",
+                title: isTimeout ? "Speech processing timed out" : "Speech processing failed",
+                description: isTimeout
+                    ? "The speech service took too long. Try a shorter recording."
+                    : "Could not convert audio to text. Please try again.",
                 variant: "destructive",
             });
+        } finally {
+            setIsProcessingSpeech(false);
         }
     };
 
@@ -525,7 +549,14 @@ export function MultimodalInput({
                                         )}
                                     </div>
 
-                                    {speechTranscript ? (
+                                    {isProcessingSpeech ? (
+                                        <div className="flex flex-col items-center justify-center h-20 border rounded-md gap-2">
+                                            <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                                            <p className="text-sm text-muted-foreground">
+                                                Converting speech to text...
+                                            </p>
+                                        </div>
+                                    ) : speechTranscript ? (
                                         <div className="relative border rounded-md p-3 bg-muted/30">
                                             <Button
                                                 variant="ghost"
