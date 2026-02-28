@@ -1,8 +1,12 @@
 // Utility functions for audio processing
 
+const TARGET_SAMPLE_RATE = 16000; // 16kHz — optimal for Azure Speech Service
+const TARGET_CHANNELS = 1; // Mono
+
 /**
- * Convert audio blob to WAV format using Web Audio API
- * This ensures the audio is in the correct format for Azure Speech Service
+ * Convert audio blob to 16kHz mono WAV format using Web Audio API.
+ * Resamples from whatever the browser recorded (usually 44.1/48kHz) down to
+ * 16kHz mono PCM, which is exactly what Azure Speech Service expects.
  */
 export async function convertToWav(audioBlob: Blob): Promise<Blob> {
     try {
@@ -12,14 +16,18 @@ export async function convertToWav(audioBlob: Blob): Promise<Blob> {
         // Read the blob as an array buffer
         const arrayBuffer = await audioBlob.arrayBuffer();
         
-        // Decode the audio data
+        // Decode the audio data (browser sample rate, may be stereo)
         const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
-        
-        // Convert to WAV format
-        const wavBlob = audioBufferToWav(audioBuffer);
-        
-        // Close the audio context
         audioContext.close();
+
+        console.log(`Audio decoded: ${audioBuffer.sampleRate}Hz, ${audioBuffer.numberOfChannels}ch, ${audioBuffer.duration.toFixed(1)}s`);
+
+        // Resample to 16kHz mono
+        const resampledBuffer = await resampleTo16kMono(audioBuffer);
+        console.log(`Resampled to: ${resampledBuffer.sampleRate}Hz, ${resampledBuffer.numberOfChannels}ch, ${resampledBuffer.length} samples`);
+
+        // Convert to WAV format
+        const wavBlob = audioBufferToWav(resampledBuffer);
         
         return wavBlob;
     } catch (error) {
@@ -29,7 +37,39 @@ export async function convertToWav(audioBlob: Blob): Promise<Blob> {
 }
 
 /**
- * Convert AudioBuffer to WAV Blob
+ * Resample an AudioBuffer to 16kHz mono using OfflineAudioContext.
+ * This is critical — without resampling, a 48kHz recording pushed as 16kHz
+ * plays back 3x too fast and Azure recognises garbage.
+ */
+async function resampleTo16kMono(audioBuffer: AudioBuffer): Promise<AudioBuffer> {
+    // If already at the target rate and mono, return as-is
+    if (
+        audioBuffer.sampleRate === TARGET_SAMPLE_RATE &&
+        audioBuffer.numberOfChannels === TARGET_CHANNELS
+    ) {
+        return audioBuffer;
+    }
+
+    const duration = audioBuffer.duration;
+    const targetLength = Math.round(duration * TARGET_SAMPLE_RATE);
+
+    // OfflineAudioContext renders at the exact sample rate we need
+    const offlineCtx = new OfflineAudioContext(
+        TARGET_CHANNELS,
+        targetLength,
+        TARGET_SAMPLE_RATE
+    );
+
+    const source = offlineCtx.createBufferSource();
+    source.buffer = audioBuffer;
+    source.connect(offlineCtx.destination);
+    source.start(0);
+
+    return await offlineCtx.startRendering();
+}
+
+/**
+ * Convert AudioBuffer to WAV Blob (PCM 16-bit)
  */
 function audioBufferToWav(audioBuffer: AudioBuffer): Blob {
     const numberOfChannels = audioBuffer.numberOfChannels;
@@ -37,7 +77,7 @@ function audioBufferToWav(audioBuffer: AudioBuffer): Blob {
     const format = 1; // PCM
     const bitDepth = 16;
     
-    // Interleave channels
+    // Total data byte length (samples × channels × bytesPerSample)
     const length = audioBuffer.length * numberOfChannels * 2;
     const buffer = new ArrayBuffer(44 + length);
     const view = new DataView(buffer);

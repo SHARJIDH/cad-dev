@@ -177,7 +177,7 @@ export function MultimodalInput({
 
             // Call speech-to-text API with timeout
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 15000); // 15s timeout
+            const timeoutId = setTimeout(() => controller.abort(), 35000); // 35s timeout (continuous recognition needs more time)
 
             const response = await fetch("/api/speech-to-text", {
                 method: "POST",

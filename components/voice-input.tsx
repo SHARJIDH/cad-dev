@@ -22,19 +22,23 @@ export function VoiceInput({ projectId }: { projectId: string }) {
       recognitionInstance.interimResults = true
       recognitionInstance.lang = "en-US"
 
+      // Accumulate all final transcripts so earlier results aren't lost
+      let accumulatedFinals = ""
+
       recognitionInstance.onresult = (event: any) => {
-        let interimTranscript = ""
-        let finalTranscript = ""
+        let latestInterim = ""
 
         for (let i = event.resultIndex; i < event.results.length; ++i) {
+          const text = event.results[i][0].transcript
           if (event.results[i].isFinal) {
-            finalTranscript += event.results[i][0].transcript
+            accumulatedFinals += text
           } else {
-            interimTranscript += event.results[i][0].transcript
+            latestInterim += text
           }
         }
 
-        setTranscript(finalTranscript || interimTranscript)
+        // Show accumulated finals + current interim preview
+        setTranscript(accumulatedFinals + latestInterim)
       }
 
       recognitionInstance.onend = () => {
